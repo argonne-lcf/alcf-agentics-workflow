@@ -1,0 +1,13 @@
+# Core dependencies for Agentic Workflow Demo
+langgraph>=0.1.0
+langchain>=0.1.0
+langchain-openai>=0.1.0
+globus-compute-sdk>=2.0.0
+openmm>=8.0.0
+
+# Testing
+pytest>=7.0.0
+pytest-mock>=3.10.0
+
+# Development
+ruff>=0.1.0 
