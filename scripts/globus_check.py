@@ -12,33 +12,13 @@ import shutil
 import subprocess
 import sys
 
-# Add globus_sdk import for authentication
-import globus_sdk
-from globus_sdk.login_flows import LocalServerLoginFlowManager # Needed to access globus_sdk.gare
-
 # Add globus_compute_sdk import for endpoint operations
 from globus_compute_sdk import Client
 
-# Globus authentication constants (from inference_auth_token.py)
-APP_NAME = "alcf_agentics_workflow"
-# Public inference auth client
-AUTH_CLIENT_ID = "58fdd3bc-e1c3-4ce5-80ea-8d6b87cfb944"
-# Inference gateway API scope
-GATEWAY_CLIENT_ID = "681c10cc-f684-4540-bcd7-0b4df3bc26ef"
-GATEWAY_SCOPE = f"https://auth.globus.org/scopes/{GATEWAY_CLIENT_ID}/action_all"
-
-# Allowed identity provider domains
-ALLOWED_DOMAINS = ["anl.gov", "alcf.anl.gov"]
-
-# Globus authorizer parameters to point to specific identity providers
-GA_PARAMS = globus_sdk.gare.GlobusAuthorizationParameters(session_required_single_domain=ALLOWED_DOMAINS)
-
-
-# Error handler to guide user through specific identity providers 
-class DomainBasedErrorHandler:
-    def __call__(self, app, error):
-        print(f"Encountered error '{error}', initiating login...")
-        app.login(auth_params=GA_PARAMS)
+# Import shared Globus interface
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
+from tools.globus_interface import check_auth_status, get_auth_object
 
 def run(cmd):
    """Execute command and return stdout or raise on error"""
@@ -49,40 +29,9 @@ def run(cmd):
 
 
 def check_auth(max_age_days=30):
-   """Check Globus authentication token freshness using SDK"""
+   """Check Globus authentication token freshness using shared interface"""
    logging.info("Checking Globus authentication…")
-   
-   try:
-      # Create Globus user application
-      logging.info(f"Creating Globus user application for {APP_NAME} with client ID {AUTH_CLIENT_ID} and scope {GATEWAY_SCOPE}")
-      app = globus_sdk.UserApp(
-         APP_NAME,
-         client_id=AUTH_CLIENT_ID,
-         scope_requirements={GATEWAY_CLIENT_ID: [GATEWAY_SCOPE]},
-         config=globus_sdk.GlobusAppConfig(
-            request_refresh_tokens=True,
-            token_validation_error_handler=DomainBasedErrorHandler()
-         ),
-      )
-      logging.info(f"Globus user application created: {app}")
-      
-      # Get authorizer object 
-      auth = app.get_authorizer(GATEWAY_CLIENT_ID)
-      
-      # Check if token is valid and refresh if needed
-      # auth.ensure_valid_token()
-      
-      logging.info("✅ Globus authentication valid")
-      return True
-      
-   except globus_sdk.AuthAPIError as e:
-      logging.error(f"❌ Globus authentication failed: {e}")
-      logging.info("💡 Run: python scripts/inference_auth_token.py authenticate")
-      return False
-   except Exception as e:
-      logging.error(f"❌ Authentication check failed: {e}")
-      logging.info("💡 Try authenticating with: python scripts/inference_auth_token.py authenticate")
-      return False
+   return check_auth_status(max_age_days)
 
 
 def check_endpoint(eid):
@@ -123,6 +72,8 @@ def check_python_env():
    
    required_packages = [
       "globus_compute_sdk",
+      "globus_sdk",
+      "openai",
       "langgraph", 
       "langchain_openai",
       "openmm"

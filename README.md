@@ -57,6 +57,8 @@ export OPENAI_MODEL="llama3-8b-instruct"  # Optional: defaults to this
 python scripts/globus_check.py
 ```
 
+> **Aurora Endpoint Setup**: The repository must also be available on Aurora with dependencies installed. See [`docs/setup-crux.md`](docs/setup-crux.md) for complete endpoint configuration including PYTHONPATH setup.
+
 ### Run Demo
 
 ```bash

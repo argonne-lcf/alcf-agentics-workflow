@@ -71,15 +71,34 @@ globus login --force
 
 ### 5. Set Up Aurora Endpoint
 
-#### Create Endpoint Configuration
+#### Prepare Aurora Environment
 
 ```bash
 # SSH to Aurora login node
 ssh aurora-login
 
-# Load Globus Compute
+# Navigate to your workspace
+cd /lus/grand/projects/your-project/your-username
+
+# Clone the repository (if not already done)
+git clone <repository-url> agentic-workflow-demo
+cd agentic-workflow-demo
+
+# Load required modules
+module load conda
 module load globus-compute
 
+# Create and activate conda environment
+conda create -n agentic-demo python=3.9
+conda activate agentic-demo
+
+# Install dependencies (same as on Crux)
+pip install -r requirements.txt
+```
+
+#### Create Endpoint Configuration
+
+```bash
 # Configure endpoint (first time only)
 globus-compute-endpoint configure my-aurora-endpoint
 
@@ -88,7 +107,7 @@ globus-compute-endpoint configure my-aurora-endpoint
 
 #### Edit Endpoint Configuration
 
-Edit the configuration file to optimize for Aurora:
+Edit the configuration file to optimize for Aurora and include the repository path:
 
 ```yaml
 # ~/.globus_compute/my-aurora-endpoint/config.yaml
@@ -108,7 +127,10 @@ engine:
   worker_init: |
     module load conda
     conda activate agentic-demo
+    export PYTHONPATH="/lus/grand/projects/your-project/your-username/agentic-workflow-demo:$PYTHONPATH"
 ```
+
+> **Important**: Replace `/lus/grand/projects/your-project/your-username/agentic-workflow-demo` with the actual path to your repository on Aurora.
 
 #### Start the Endpoint
 
@@ -193,6 +215,60 @@ python scripts/globus_check.py --verbose
 # INFO | ✅ Endpoint reachable and active
 # INFO | 📊 Summary: 3/3 checks passed
 # INFO | 🎉 All checks passed - ready to run agentic workflow!
+```
+
+## 🔧 Aurora Endpoint Requirements
+
+### What Needs to Be Available on Aurora
+
+For the Globus Compute endpoint to successfully execute the simulation kernel, the Aurora compute nodes need:
+
+1. **Python Environment**: A conda environment with all dependencies installed
+   ```bash
+   # On Aurora
+   conda create -n agentic-demo python=3.9
+   conda activate agentic-demo
+   pip install -r requirements.txt
+   ```
+
+2. **Repository Code**: The source code must be importable via Python path
+   ```bash
+   # In endpoint configuration worker_init:
+   export PYTHONPATH="/path/to/alcf-agentics-workflow:$PYTHONPATH"
+   ```
+
+3. **Modules**: Required system modules loaded in the job environment
+   ```bash
+   # In endpoint configuration worker_init:
+   module load conda
+   module load globus-compute  # If needed for job environment
+   ```
+
+### Required Directory Structure on Aurora
+
+```
+/lus/grand/projects/your-project/your-username/
+└── agentic-workflow-demo/              # Repository root
+    ├── src/
+    │   ├── sim_kernel.py               # Must be importable
+    │   └── tools/
+    │       └── compute.py
+    ├── requirements.txt                # For pip install
+    └── ...
+```
+
+### Verification on Aurora
+
+After setup, verify the endpoint can import the simulation kernel:
+
+```bash
+# On Aurora compute node (or in endpoint test)
+python -c "
+import sys
+sys.path.insert(0, '/path/to/alcf-agentics-workflow')
+from src.sim_kernel import run_md_simulation
+print('✅ Simulation kernel importable')
+"
 ```
 
 ## 🧪 Test the Workflow

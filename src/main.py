@@ -13,12 +13,12 @@ import time
 from datetime import datetime
 from typing import Dict, Any
 
-from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
 from typing_extensions import TypedDict
 
 from tools.compute import GlobusComputeWrapper
+from tools.globus_interface import get_sophia_client, DEFAULT_MODEL
 
 
 class AgentState(TypedDict):
@@ -40,7 +40,7 @@ def parse_cli():
    p.add_argument("--protein", "-p", default="p53", 
                   help="Protein name to analyze (default: p53)")
    p.add_argument("--model", "-m",
-                  default=os.getenv("OPENAI_MODEL", "llama3-8b-instruct"),
+                  default=os.getenv("OPENAI_MODEL", DEFAULT_MODEL),
                   help="LLM model to use")
    p.add_argument("--endpoint", "-e", 
                   default=os.getenv("GC_ENDPOINT_ID"),
@@ -66,23 +66,34 @@ def llm_analysis_node(state: AgentState) -> AgentState:
    """Node that queries LLM for protein analysis"""
    logging.info("🧠 Querying LLM for protein analysis...")
    
-   llm = ChatOpenAI(model=state.get("model", "llama3-8b-instruct"))
-   
-   prompt = f"""
-   Analyze the protein {state['protein']} and suggest molecular dynamics simulation parameters.
-   
-   Please provide:
-   1. Brief protein description
-   2. Recommended simulation parameters (timestep, temperature, steps)
-   3. Key stability metrics to monitor
-   
-   Format your response as a structured analysis.
-   """
-   
    try:
-      response = llm.invoke(prompt)
+      # Get Sophia client with Globus authentication
+      client = get_sophia_client()
+      model = state.get("model", DEFAULT_MODEL)
+      
+      prompt = f"""
+      Analyze the protein {state['protein']} and suggest molecular dynamics simulation parameters.
+      
+      Please provide:
+      1. Brief protein description
+      2. Recommended simulation parameters (timestep, temperature, steps)
+      3. Key stability metrics to monitor
+      
+      Format your response as a structured analysis.
+      """
+      
+      # Query the LLM using OpenAI client
+      response = client.chat.completions.create(
+         model=model,
+         messages=[{"role": "user", "content": prompt}]
+      )
+      
+      # Extract the response content
+      response_content = response.choices[0].message.content
+      
       state["analysis_request"] = prompt
-      state["messages"] = add_messages(state.get("messages", []), [response])
+      # Store the response content in messages for LangGraph compatibility
+      state["messages"] = add_messages(state.get("messages", []), [{"content": response_content, "role": "assistant"}])
       
       # Extract simulation parameters (simplified for demo)
       state["simulation_params"] = {
@@ -93,6 +104,7 @@ def llm_analysis_node(state: AgentState) -> AgentState:
       }
       
       logging.info("✅ LLM analysis completed")
+      logging.debug(f"LLM response: {response_content[:200]}...")
       return state
       
    except Exception as e:
