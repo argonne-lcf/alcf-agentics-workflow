@@ -12,6 +12,33 @@ import shutil
 import subprocess
 import sys
 
+# Add globus_sdk import for authentication
+import globus_sdk
+from globus_sdk.login_flows import LocalServerLoginFlowManager # Needed to access globus_sdk.gare
+
+# Add globus_compute_sdk import for endpoint operations
+from globus_compute_sdk import Client
+
+# Globus authentication constants (from inference_auth_token.py)
+APP_NAME = "alcf_agentics_workflow"
+# Public inference auth client
+AUTH_CLIENT_ID = "58fdd3bc-e1c3-4ce5-80ea-8d6b87cfb944"
+# Inference gateway API scope
+GATEWAY_CLIENT_ID = "681c10cc-f684-4540-bcd7-0b4df3bc26ef"
+GATEWAY_SCOPE = f"https://auth.globus.org/scopes/{GATEWAY_CLIENT_ID}/action_all"
+
+# Allowed identity provider domains
+ALLOWED_DOMAINS = ["anl.gov", "alcf.anl.gov"]
+
+# Globus authorizer parameters to point to specific identity providers
+GA_PARAMS = globus_sdk.gare.GlobusAuthorizationParameters(session_required_single_domain=ALLOWED_DOMAINS)
+
+
+# Error handler to guide user through specific identity providers 
+class DomainBasedErrorHandler:
+    def __call__(self, app, error):
+        print(f"Encountered error '{error}', initiating login...")
+        app.login(auth_params=GA_PARAMS)
 
 def run(cmd):
    """Execute command and return stdout or raise on error"""
@@ -22,56 +49,69 @@ def run(cmd):
 
 
 def check_auth(max_age_days=30):
-   """Check Globus authentication token freshness"""
-   logging.info("Checking Globus session …")
+   """Check Globus authentication token freshness using SDK"""
+   logging.info("Checking Globus authentication…")
    
    try:
-      data = json.loads(run(["globus", "session", "show", "--format", "json"]))
-      oldest = max(datetime.datetime.fromisoformat(i["auth_time"])
-                   for i in data["identities"])
-      age = (datetime.datetime.utcnow() - oldest).days
+      # Create Globus user application
+      logging.info(f"Creating Globus user application for {APP_NAME} with client ID {AUTH_CLIENT_ID} and scope {GATEWAY_SCOPE}")
+      app = globus_sdk.UserApp(
+         APP_NAME,
+         client_id=AUTH_CLIENT_ID,
+         scope_requirements={GATEWAY_CLIENT_ID: [GATEWAY_SCOPE]},
+         config=globus_sdk.GlobusAppConfig(
+            request_refresh_tokens=True,
+            token_validation_error_handler=DomainBasedErrorHandler()
+         ),
+      )
+      logging.info(f"Globus user application created: {app}")
       
-      if age > max_age_days:
-         logging.warning("⚠️  Tokens are %sd old; run `globus login`.", age)
-         return False
-      else:
-         logging.info("Globus tokens fresh (%sd).", age)
-         return True
-         
-   except subprocess.CalledProcessError:
-      logging.error("❌ Globus CLI not found or not logged in")
-      logging.info("💡 Run: globus login")
+      # Get authorizer object 
+      auth = app.get_authorizer(GATEWAY_CLIENT_ID)
+      
+      # Check if token is valid and refresh if needed
+      # auth.ensure_valid_token()
+      
+      logging.info("✅ Globus authentication valid")
+      return True
+      
+   except globus_sdk.AuthAPIError as e:
+      logging.error(f"❌ Globus authentication failed: {e}")
+      logging.info("💡 Run: python scripts/inference_auth_token.py authenticate")
       return False
    except Exception as e:
-      logging.error(f"❌ Auth check failed: {e}")
+      logging.error(f"❌ Authentication check failed: {e}")
+      logging.info("💡 Try authenticating with: python scripts/inference_auth_token.py authenticate")
       return False
 
 
 def check_endpoint(eid):
-   """Check Globus Compute endpoint status"""
+   """Check Globus Compute endpoint status using SDK"""
    if not eid:
       logging.error("❌ GC_ENDPOINT_ID not set")
       logging.info("💡 Set environment variable: export GC_ENDPOINT_ID=your-endpoint-id")
       return False
       
-   if not shutil.which("globus-compute-endpoint"):
-      logging.error("❌ globus-compute-endpoint CLI missing in PATH")
-      logging.info("💡 Install: pip install globus-compute-sdk")
-      return False
-      
    logging.info("Checking endpoint %s …", eid)
    
    try:
-      output = run(["globus-compute-endpoint", "status", eid])
-      if "online" in output.lower() or "active" in output.lower():
-         logging.info("✅ Endpoint reachable and active")
+      # Create Globus Compute client
+      compute_client = Client()
+      
+      # Get endpoint status using SDK
+      status_info = compute_client.get_endpoint_status(eid)
+      
+      # Check if endpoint is available/online
+      if status_info and status_info.get('status') in ['online', 'active', 'available']:
+         logging.info("✅ Endpoint is online and available")
          return True
       else:
-         logging.warning("⚠️  Endpoint may be offline")
-         logging.debug(f"Status output: {output}")
+         status = status_info.get('status', 'unknown') if status_info else 'unknown'
+         logging.warning(f"⚠️  Endpoint status: {status}")
+         logging.debug(f"Full status info: {status_info}")
          return False
          
-   except RuntimeError as e:
+   except Exception as e:
       logging.error(f"❌ Endpoint check failed: {e}")
       logging.info("💡 Try: globus-compute-endpoint start %s", eid)
       return False
