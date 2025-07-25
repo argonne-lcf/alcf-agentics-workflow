@@ -8,9 +8,6 @@ import os
 import logging
 import globus_sdk
 from globus_sdk.login_flows import LocalServerLoginFlowManager
-from openai import OpenAI
-
-
 # Globus UserApp name
 APP_NAME = "alcf_agentics_workflow"
 
@@ -29,10 +26,6 @@ ALLOWED_DOMAINS = ["anl.gov", "alcf.anl.gov"]
 
 # Globus authorizer parameters to point to specific identity providers
 GA_PARAMS = globus_sdk.gare.GlobusAuthorizationParameters(session_required_single_domain=ALLOWED_DOMAINS)
-
-# Sophia LLM API configuration
-SOPHIA_BASE_URL = "https://data-portal-dev.cels.anl.gov/resource_server/sophia/vllm/v1"
-DEFAULT_MODEL = "meta-llama/Meta-Llama-3.1-8B-Instruct"
 
 
 class DomainBasedErrorHandler:
@@ -85,25 +78,6 @@ def get_access_token():
 
    # Return the access token
    return auth.access_token
-
-
-def get_sophia_client(model=None):
-   """
-   Create an OpenAI client configured for Sophia LLM service
-   using Globus authentication.
-   
-   Args:
-      model: Optional model name override
-      
-   Returns:
-      OpenAI client instance configured for Sophia
-   """
-   access_token = get_access_token()
-   
-   return OpenAI(
-      api_key=access_token,
-      base_url=SOPHIA_BASE_URL
-   )
 
 
 def check_auth_status(max_age_days=30):

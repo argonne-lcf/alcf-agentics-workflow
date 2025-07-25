@@ -73,7 +73,6 @@ def check_python_env():
    required_packages = [
       "globus_compute_sdk",
       "globus_sdk",
-      "openai",
       "langgraph", 
       "langchain_openai",
       "openmm"

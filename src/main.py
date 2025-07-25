@@ -13,12 +13,17 @@ import time
 from datetime import datetime
 from typing import Dict, Any
 
+from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
 from typing_extensions import TypedDict
 
 from tools.compute import GlobusComputeWrapper
-from tools.globus_interface import get_sophia_client, DEFAULT_MODEL
+from tools.globus_interface import get_access_token
+
+# Sophia LLM API configuration
+SOPHIA_BASE_URL = "https://data-portal-dev.cels.anl.gov/resource_server/sophia/vllm/v1"
+DEFAULT_MODEL = "meta-llama/Meta-Llama-3.1-8B-Instruct"
 
 
 class AgentState(TypedDict):
@@ -67,9 +72,16 @@ def llm_analysis_node(state: AgentState) -> AgentState:
    logging.info("🧠 Querying LLM for protein analysis...")
    
    try:
-      # Get Sophia client with Globus authentication
-      client = get_sophia_client()
+      # Get Globus access token for authentication
+      access_token = get_access_token()
       model = state.get("model", DEFAULT_MODEL)
+      
+      # Create ChatOpenAI client configured for Sophia with Globus authentication
+      llm = ChatOpenAI(
+         model=model,
+         openai_api_key=access_token,
+         openai_api_base=SOPHIA_BASE_URL
+      )
       
       prompt = f"""
       Analyze the protein {state['protein']} and suggest molecular dynamics simulation parameters.
@@ -82,18 +94,11 @@ def llm_analysis_node(state: AgentState) -> AgentState:
       Format your response as a structured analysis.
       """
       
-      # Query the LLM using OpenAI client
-      response = client.chat.completions.create(
-         model=model,
-         messages=[{"role": "user", "content": prompt}]
-      )
-      
-      # Extract the response content
-      response_content = response.choices[0].message.content
+      # Query the LLM using LangChain
+      response = llm.invoke(prompt)
       
       state["analysis_request"] = prompt
-      # Store the response content in messages for LangGraph compatibility
-      state["messages"] = add_messages(state.get("messages", []), [{"content": response_content, "role": "assistant"}])
+      state["messages"] = add_messages(state.get("messages", []), [response])
       
       # Extract simulation parameters (simplified for demo)
       state["simulation_params"] = {
@@ -104,7 +109,7 @@ def llm_analysis_node(state: AgentState) -> AgentState:
       }
       
       logging.info("✅ LLM analysis completed")
-      logging.debug(f"LLM response: {response_content[:200]}...")
+      logging.debug(f"LLM response: {response.content[:200]}...")
       return state
       
    except Exception as e:
