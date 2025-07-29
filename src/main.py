@@ -22,8 +22,8 @@ from tools.compute import GlobusComputeWrapper
 from tools.globus_interface import get_access_token
 
 # Sophia LLM API configuration
-SOPHIA_BASE_URL = "https://data-portal-dev.cels.anl.gov/resource_server/sophia/vllm/v1"
-DEFAULT_MODEL = "meta-llama/Meta-Llama-3.1-8B-Instruct"
+SOPHIA_BASE_URL = os.getenv("OPENAI_API_BASE", "https://data-portal-dev.cels.anl.gov/resource_server/sophia/vllm/v1")
+DEFAULT_MODEL = os.getenv("OPENAI_MODEL", "meta-llama/Meta-Llama-3.1-8B-Instruct")
 
 
 class AgentState(TypedDict):
@@ -53,7 +53,7 @@ def parse_cli():
    p.add_argument("--log-level", "-l", default="INFO",
                   choices=["DEBUG", "INFO", "WARNING", "ERROR"],
                   help="Set logging level")
-   p.add_argument("--max-simulation-time", "-t", type=int, default=60,
+   p.add_argument("--max-simulation-time", "-t", type=int, default=60*60,
                   help="Maximum simulation time in seconds")
    return p.parse_args()
 
