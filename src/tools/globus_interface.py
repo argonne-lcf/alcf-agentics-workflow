@@ -8,6 +8,7 @@ import os
 import logging
 import globus_sdk
 from globus_sdk.login_flows import LocalServerLoginFlowManager
+
 # Globus UserApp name
 APP_NAME = "alcf_agentics_workflow"
 
@@ -28,10 +29,16 @@ ALLOWED_DOMAINS = ["anl.gov", "alcf.anl.gov"]
 GA_PARAMS = globus_sdk.gare.GlobusAuthorizationParameters(session_required_single_domain=ALLOWED_DOMAINS)
 
 
+def get_logger():
+   """Get the module logger"""
+   return logging.getLogger("agentic_demo.auth")
+
+
 class DomainBasedErrorHandler:
    """Error handler to guide user through specific identity providers"""
    def __call__(self, app, error):
-      logging.warning(f"Encountered error '{error}', initiating login...")
+      logger = get_logger()
+      logger.warning(f"Encountered error '{error}', initiating login...")
       app.login(auth_params=GA_PARAMS)
 
 
@@ -90,6 +97,7 @@ def check_auth_status(max_age_days=30):
    Returns:
       bool: True if authentication is valid, False otherwise
    """
+   logger = get_logger()
    try:
       # Get authorizer object
       auth = get_auth_object()
@@ -97,15 +105,15 @@ def check_auth_status(max_age_days=30):
       # Check if token is valid
       auth.ensure_valid_token()
       
-      logging.info("✅ Globus authentication valid")
+      logger.info("✅ Globus authentication valid")
       return True
       
    except globus_sdk.AuthAPIError as e:
-      logging.error(f"❌ Globus authentication failed: {e}")
-      logging.info("💡 Run authentication with: python -c 'from src.tools.globus_interface import get_auth_object; get_auth_object(force=True)'")
+      logger.error(f"❌ Globus authentication failed: {e}")
+      logger.info("💡 Run authentication with: python -c 'from src.tools.globus_interface import get_auth_object; get_auth_object(force=True)'")
       return False
    except Exception as e:
-      logging.error(f"❌ Authentication check failed: {e}")
+      logger.error(f"❌ Authentication check failed: {e}")
       return False
 
 
@@ -133,7 +141,7 @@ if __name__ == "__main__":
    parser.add_argument("-v", "--verbose", action="store_true", help="verbose logging")
    args = parser.parse_args()
 
-   # Configure logging
+   # Configure logging for CLI usage - this is separate from the module logger
    level = logging.DEBUG if args.verbose else logging.INFO
    logging.basicConfig(level=level, format="%(levelname)s | %(message)s")
 

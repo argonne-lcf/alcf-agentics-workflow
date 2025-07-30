@@ -11,6 +11,11 @@ from typing import Dict, Any, Optional
 from globus_compute_sdk import Client, Executor
 
 
+def get_logger():
+   """Get the module logger"""
+   return logging.getLogger("agentic_demo.compute")
+
+
 class GlobusComputeWrapper:
    """Wrapper for Globus Compute operations"""
    
@@ -37,8 +42,9 @@ class GlobusComputeWrapper:
       Returns:
          Dictionary containing simulation results or error information
       """
-      logging.info(f"Submitting simulation job to endpoint {self.endpoint_id}")
-      logging.debug(f"Simulation parameters: {params}")
+      logger = get_logger()
+      logger.info(f"Submitting simulation job to endpoint {self.endpoint_id}")
+      logger.debug(f"Simulation parameters: {params}")
       
       try:
          # Import the simulation kernel function - handle both test and normal execution
@@ -54,28 +60,28 @@ class GlobusComputeWrapper:
          # Submit the function to Globus Compute
          future = self.executor.submit(run_md_simulation, params)
          
-         logging.info(f"Job submitted with ID: {future.task_id}")
+         logger.info(f"Job submitted with ID: {future.task_id}")
          
          # Wait for completion with timeout
          start_time = time.time()
          while not future.done():
             elapsed = time.time() - start_time
             if elapsed > timeout:
-               logging.error(f"Job timed out after {timeout}s")
+               logger.error(f"Job timed out after {timeout}s")
                return {
                   "status": "timeout",
                   "error": f"Job timed out after {timeout} seconds",
                   "task_id": future.task_id
                }
             
-            logging.debug(f"Waiting for job completion... ({elapsed:.1f}s elapsed)")
+            logger.debug(f"Waiting for job completion... ({elapsed:.1f}s elapsed)")
             time.sleep(5)
          
          # Get the result
          result = future.result()
          elapsed = time.time() - start_time
          
-         logging.info(f"Job completed successfully in {elapsed:.1f}s")
+         logger.info(f"Job completed successfully in {elapsed:.1f}s")
          return {
             "status": "completed",
             "task_id": future.task_id,
@@ -84,7 +90,7 @@ class GlobusComputeWrapper:
          }
          
       except Exception as e:
-         logging.error(f"Globus Compute job failed: {e}")
+         logger.error(f"Globus Compute job failed: {e}")
          return {
             "status": "error",
             "error": str(e)
@@ -96,6 +102,7 @@ class GlobusComputeWrapper:
       Returns:
          Dictionary with endpoint status information
       """
+      logger = get_logger()
       try:
          # Try to get endpoint details
          endpoint_info = self.client.get_endpoint_metadata(self.endpoint_id)
@@ -108,7 +115,7 @@ class GlobusComputeWrapper:
          }
          
       except Exception as e:
-         logging.error(f"Failed to check endpoint status: {e}")
+         logger.error(f"Failed to check endpoint status: {e}")
          return {
             "status": "error",
             "endpoint_id": self.endpoint_id,

@@ -60,16 +60,36 @@ def parse_cli():
 
 def config_logging(level):
    """Configure logging with specified format"""
+   # Set root logger to WARNING to quiet third-party libraries
    logging.basicConfig(
-      level=getattr(logging, level),
+      level=logging.WARNING,
       format="%(asctime)s | %(levelname)-8s | %(message)s",
       datefmt="%d-%m %H:%M"
    )
+   
+   # Set our application loggers to the user-specified level
+   app_logger = logging.getLogger("agentic_demo")
+   app_logger.setLevel(getattr(logging, level))
+   
+   # Also set our module loggers to the same level
+   compute_logger = logging.getLogger("agentic_demo.compute")
+   compute_logger.setLevel(getattr(logging, level))
+   
+   auth_logger = logging.getLogger("agentic_demo.auth")
+   auth_logger.setLevel(getattr(logging, level))
+   
+   return app_logger
+
+
+def get_logger():
+   """Get the application logger"""
+   return logging.getLogger("agentic_demo")
 
 
 def llm_analysis_node(state: AgentState) -> AgentState:
    """Node that queries LLM for protein analysis"""
-   logging.info("🧠 Querying LLM for protein analysis...")
+   logger = get_logger()
+   logger.info("🧠 Querying LLM for protein analysis...")
    
    try:
       # Get Globus access token for authentication
@@ -108,22 +128,23 @@ def llm_analysis_node(state: AgentState) -> AgentState:
          "protein": state["protein"]
       }
       
-      logging.info("✅ LLM analysis completed")
-      logging.debug(f"LLM response: {response.content[:200]}...")
+      logger.info("✅ LLM analysis completed")
+      logger.debug(f"LLM response: {response.content[:200]}...")
       return state
       
    except Exception as e:
-      logging.error(f"❌ LLM analysis failed: {e}")
+      logger.error(f"❌ LLM analysis failed: {e}")
       state["simulation_params"] = {}
       return state
 
 
 def simulation_node(state: AgentState) -> AgentState:
    """Node that runs GPU simulation via Globus Compute"""
-   logging.info("🚀 Launching GPU simulation on Aurora...")
+   logger = get_logger()
+   logger.info("🚀 Launching GPU simulation on Aurora...")
    
    if not state.get("simulation_params"):
-      logging.error("❌ No simulation parameters available")
+      logger.error("❌ No simulation parameters available")
       state["simulation_result"] = {"error": "No simulation parameters"}
       return state
    
@@ -132,18 +153,19 @@ def simulation_node(state: AgentState) -> AgentState:
       result = gc_wrapper.submit_simulation(state["simulation_params"])
       
       state["simulation_result"] = result
-      logging.info(f"✅ Simulation completed: {result.get('status', 'unknown')}")
+      logger.info(f"✅ Simulation completed: {result.get('status', 'unknown')}")
       return state
       
    except Exception as e:
-      logging.error(f"❌ Simulation failed: {e}")
+      logger.error(f"❌ Simulation failed: {e}")
       state["simulation_result"] = {"error": str(e)}
       return state
 
 
 def report_node(state: AgentState) -> AgentState:
    """Node that generates final report"""
-   logging.info("📊 Generating final report...")
+   logger = get_logger()
+   logger.info("📊 Generating final report...")
    
    sim_result = state.get("simulation_result", {})
    protein = state.get("protein", "unknown")
@@ -185,7 +207,7 @@ The protein {protein} simulation has been completed successfully on Aurora.
 """
    
    state["final_report"] = report
-   logging.info("✅ Report generated")
+   logger.info("✅ Report generated")
    return state
 
 
@@ -211,14 +233,15 @@ def main():
    """Main entry point"""
    args = parse_cli()
    config_logging(args.log_level)
+   logger = get_logger()
    
-   logging.info("🚀 Starting Agentic Workflow Demo")
-   logging.info(f"Target protein: {args.protein}")
-   logging.info(f"Model: {args.model}")
-   logging.info(f"Endpoint: {args.endpoint or 'Not set - will use default'}")
+   logger.info("🚀 Starting Agentic Workflow Demo")
+   logger.info(f"Target protein: {args.protein}")
+   logger.info(f"Model: {args.model}")
+   logger.info(f"Endpoint: {args.endpoint or 'Not set - will use default'}")
    
    if not args.endpoint:
-      logging.warning("⚠️  GC_ENDPOINT_ID not set - simulation may fail")
+      logger.warning("⚠️  GC_ENDPOINT_ID not set - simulation may fail")
    
    # Create initial state
    initial_state = AgentState(
@@ -237,11 +260,11 @@ def main():
       start_time = time.time()
       workflow = create_workflow()
       
-      logging.info("🔄 Running workflow...")
+      logger.info("🔄 Running workflow...")
       final_state = workflow.invoke(initial_state)
       
       elapsed = time.time() - start_time
-      logging.info(f"⏱️  Workflow completed in {elapsed:.1f}s")
+      logger.info(f"⏱️  Workflow completed in {elapsed:.1f}s")
       
       # Print final report
       print("\n" + "="*60)
@@ -252,10 +275,10 @@ def main():
          sys.exit(1)
          
    except KeyboardInterrupt:
-      logging.info("🛑 Workflow interrupted by user")
+      logger.info("🛑 Workflow interrupted by user")
       sys.exit(1)
    except Exception as e:
-      logging.error(f"❌ Workflow failed: {e}")
+      logger.error(f"❌ Workflow failed: {e}")
       sys.exit(1)
 
 
