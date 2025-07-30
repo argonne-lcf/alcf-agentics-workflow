@@ -217,15 +217,6 @@ The demo runs simplified molecular dynamics simulations with the following chara
 
 > **Note**: This is a demonstration with simplified physics. Real MD simulations would require proper force fields, solvation, and longer timescales.
 
-## 🚀 Extension Ideas
-
-| Extension | Description | Difficulty |
-|-----------|-------------|------------|
-| **Real PDB structures** | Load actual protein structures from RCSB Protein Data Bank | ⭐⭐ |
-| **Force field selection** | Support AMBER, CHARMM, OPLS force fields | ⭐⭐⭐ |
-| **Trajectory analysis** | Add contact maps, secondary structure analysis | ⭐⭐⭐ |
-| **Multi-protein systems** | Support protein-protein interaction studies | ⭐⭐⭐⭐ |
-| **Free energy calculations** | Implement umbrella sampling, FEP methods | ⭐⭐⭐⭐⭐ |
 
 ## 🧪 Testing
 
@@ -240,51 +231,6 @@ python -m pytest tests/ --cov=src --cov-report=html
 python -m pytest tests/test_smoke.py::TestCLI -v
 ```
 
-## 📚 Documentation
-
-- **Setup Guide**: See setup instructions in this README
-- **API Reference**: Docstrings in source code
-- **Examples**: See [`tests/test_smoke.py`](tests/test_smoke.py)
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-1. **"GC_ENDPOINT_ID not set"**
-   ```bash
-   export GC_ENDPOINT_ID="your-endpoint-id"
-   python scripts/globus_check.py
-   ```
-
-2. **"Globus tokens expired"**
-   ```bash
-   globus login
-   ```
-
-3. **"Missing packages"**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. **Simulation timeout**
-   - Check Aurora endpoint status
-   - Increase `--max-simulation-time`
-   - Verify network connectivity to Aurora
-
-### Debug Mode
-
-```bash
-python src/main.py --protein p53 --log-level DEBUG
-```
-
-## 🤝 Contributing
-
-This is a demonstration project for ALCF users. For suggestions or improvements:
-
-1. Test your changes: `python -m pytest tests/`
-2. Follow 3-space indentation style
-3. Keep total LOC under 300 (per project guidelines)
-4. Update documentation for new features
 
 
 ---
