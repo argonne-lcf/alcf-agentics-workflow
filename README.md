@@ -1,6 +1,7 @@
 # ALCF Agentic Workflow Demo
 
 A demonstration of an end-to-end agentic workflow that showcases ALCF infrastructure integration. The workflow queries a language model on Sophia for protein analysis, then launches GPU-accelerated molecular dynamics simulations on Aurora via Globus Compute.
+Questions: jchilders@anl.gov
 
 ## ⚡ Quick Start
 
