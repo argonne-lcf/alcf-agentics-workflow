@@ -35,8 +35,7 @@ globus-compute-endpoint start my-aurora-endpoint # start endpoint
 # That <UUID> is the endpoint id. We will need this for the next step.
 
 # verify endpoint is running
-globus-compute-endpoint status my-aurora-endpoint
-
+globus-compute-endpoint list
 ```
 
 Now Aurora is ready to run the workflow.
@@ -68,7 +67,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### Configuration
+### Configuration on Crux Login Nodes
 
 ```bash
 # Set required environment variables
@@ -85,13 +84,15 @@ python src/tools/globus_interface.py authenticate
 # The web page will show a code. Copy this code and paste it into the terminal.
 
 
-# Verify setup
+# Verify setup (note it will ask for another authentication)
 python scripts/globus_check.py
 ```
 
 > **Aurora Endpoint Setup**: The repository must also be available on Aurora with dependencies installed. Follow the Aurora setup instructions above for complete endpoint configuration.
 
 ### Run Demo
+
+From the login nodes on Crux
 
 ```bash
 # Basic run with p53 protein
@@ -236,4 +237,4 @@ python -m pytest tests/test_smoke.py::TestCLI -v
 
 ---
 
-**Questions?** Contact the ALCF user support team or check the [ALCF documentation](https://docs.alcf.anl.gov/). 
+**Questions?** Contact the ALCF user support team or check the [ALCF documentation](https://docs.alcf.anl.gov/).
