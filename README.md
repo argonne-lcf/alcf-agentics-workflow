@@ -18,7 +18,6 @@ Questions: jchilders@anl.gov
 ssh aurora.alcf.anl.gov          # login to Aurora
 git clone <repository-url>       # checkout repo
 cd <repo-path>                   # enter repo
-module use /soft/modulefiles     # add module files to MODULEPATH
 module load frameworks           # get python in PATH
 python -m venv venv              # setup virtual environment
 source venv/bin/activate         # activate virtual environment
@@ -52,10 +51,9 @@ Now Aurora is ready to run the workflow.
 ssh crux.alcf.anl.gov
 
 # if you need python
-wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
-bash Miniconda3-latest-Linux-x86_64.sh -b -p $PWD/conda
-source $PWD/conda/bin/activate
-conda install python=3.10 -y
+module use /soft/modulefiles/
+module load spack-pe-base
+module load python
 
 # Clone and set up environment
 git clone <repository-url>       # checkout repo
