@@ -25,7 +25,7 @@ class TestCLI:
          args = parse_cli()
          assert args.protein == "p53"
          assert args.log_level == "INFO"
-         assert args.max_simulation_time == 60
+         assert args.max_simulation_time == 3600
    
    def test_parse_cli_custom_args(self):
       """Test CLI parsing with custom arguments"""

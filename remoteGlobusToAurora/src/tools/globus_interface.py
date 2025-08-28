@@ -110,7 +110,7 @@ def check_auth_status(max_age_days=30):
       
    except globus_sdk.AuthAPIError as e:
       logger.error(f"❌ Globus authentication failed: {e}")
-      logger.info("💡 Run authentication with: python -c 'from src.tools.globus_interface import get_auth_object; get_auth_object(force=True)'")
+      logger.info("💡 Run authentication with: python -c 'from tools.globus_interface import get_auth_object; get_auth_object(force=True)'")
       return False
    except Exception as e:
       logger.error(f"❌ Authentication check failed: {e}")
