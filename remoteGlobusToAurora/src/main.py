@@ -22,7 +22,7 @@ from tools.compute import GlobusComputeWrapper
 from tools.globus_interface import get_access_token
 
 # Sophia LLM API configuration
-SOPHIA_BASE_URL = os.getenv("OPENAI_API_BASE", "https://data-portal-dev.cels.anl.gov/resource_server/sophia/vllm/v1")
+SOPHIA_BASE_URL = os.getenv("OPENAI_API_BASE", "https://inference-api.alcf.anl.gov/resource_server/sophia/vllm/v1")
 DEFAULT_MODEL = os.getenv("OPENAI_MODEL", "meta-llama/Meta-Llama-3.1-8B-Instruct")
 
 
