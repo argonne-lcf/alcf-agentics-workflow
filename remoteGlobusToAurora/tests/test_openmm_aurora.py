@@ -127,9 +127,9 @@ def create_minimal_system() -> Tuple[Any, Any]:
       topology = app.Topology()
       chain = topology.addChain()
       residue = topology.addResidue("TST", chain)
-      topology.addAtom("H1", app.Element.getBySymbol("H"), residue)
-      topology.addAtom("H2", app.Element.getBySymbol("H"), residue)
-      topology.addBond(topology.atoms()[0], topology.atoms()[1])
+      atom1 = topology.addAtom("H1", app.Element.getBySymbol("H"), residue)
+      atom2 = topology.addAtom("H2", app.Element.getBySymbol("H"), residue)
+      topology.addBond(atom1, atom2)
       
       logger.info("✓ Minimal system created successfully")
       return system, topology
