@@ -1,6 +1,6 @@
-# ALCF Agentic Workflow Demo
+# Remote Agent Driven Simulation on Aurora
 
-A demonstration of an end-to-end agentic workflow that showcases ALCF infrastructure integration. The workflow queries a language model on Sophia for protein analysis, then launches GPU-accelerated molecular dynamics simulations on Aurora via Globus Compute.
+A demonstration of an end-to-end agentic workflow that showcases ALCF infrastructure integration. The workflow, running on Crux, queries a language model on Sophia for protein analysis, then launches GPU-accelerated molecular dynamics simulations on Aurora via Globus Compute.
 Questions: jchilders@anl.gov
 
 ## ⚡ Quick Start
@@ -15,20 +15,25 @@ Questions: jchilders@anl.gov
 ### Setup Aurora with [Globus Compute Endpoint](https://globus-compute.readthedocs.io/en/latest/endpoints/endpoints.html)
 
 ```bash
-ssh aurora.alcf.anl.gov          # login to Aurora
-git clone <repository-url>       # checkout repo
-cd <repo-path>                   # enter repo (top level)
-module load frameworks           # get python in PATH
-python -m venv venv              # setup virtual environment
-source venv/bin/activate         # activate virtual environment
-pip install -r requirements.txt  # install dependencies for the demo
-pip install globus-compute-endpoint # install globus compute endpoint
+ssh <user_name>@aurora.alcf.anl.gov   # login to Aurora
+git clone <repository-url>            # checkout repo
+cd <repo-path>                        # enter repo (top level)
+module load frameworks                # get python in PATH
+python -m venv venv                   # setup virtual environment
+source venv/bin/activate              # activate virtual environment
+pip install -r requirements.txt       # install dependencies for the demo
+pip install globus-compute-endpoint   # install globus compute endpoint
 
 # next we need to generate the endpoint configuration file for Globus Compute
 python remoteGlobusToAurora/scripts/gen_endpoint_config.py --repo-path $PWD --venv-path $PWD/venv -o my-endpoint-config.yaml
 
-globus-compute-endpoint configure --endpoint-config my-endpoint-config.yaml my-aurora-endpoint # create endpoint
-globus-compute-endpoint start my-aurora-endpoint # start endpoint
+# create endpoint 
+# only run this once, can see if endpoint is already created with "globus-compute-endpoint list"
+# if endpoint already present, skip to next step
+globus-compute-endpoint configure --endpoint-config my-endpoint-config.yaml my-aurora-endpoint
+
+# start endpoint
+globus-compute-endpoint start my-aurora-endpoint
 # when you run this, it would print to screen the endpoint id:
 #   > Starting endpoint; registered ID: <UUID>
 # That <UUID> is the endpoint id. We will need this for the next step.
@@ -48,7 +53,7 @@ Now Aurora is ready to run the workflow.
 
 ```bash
 
-ssh crux.alcf.anl.gov
+ssh <user_name>@crux.alcf.anl.gov
 
 # if you need python
 module use /soft/modulefiles/
@@ -80,7 +85,8 @@ export https_proxy="http://proxy.alcf.anl.gov:3128"
 python remoteGlobusToAurora/src/tools/globus_interface.py authenticate
 # This will print a URL to the screen. Open this URL in a browser and login with your ALCF credentials.
 # The web page will show a code. Copy this code and paste it into the terminal.
-
+# Debugging notes:
+#  - it may be necessary to force re-authentication, in which case add --force to the command above
 
 # Verify setup (note it will ask for another authentication)
 python remoteGlobusToAurora/scripts/globus_check.py
