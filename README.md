@@ -48,14 +48,14 @@ Agentic workflows are intelligent computational pipelines that use AI agents to 
 ### Quick Setup
 
 1. **Clone the repository**
-```bash
+   ```bash
    git clone <repository-url>
    cd alcf_agentics_workflow
    ```
 
 2. **Set up virtual environment**
-```bash
-python -m venv venv
+   ```bash
+   python -m venv venv
    source venv/bin/activate  # On Windows: venv\Scripts\activate
    ```
 
