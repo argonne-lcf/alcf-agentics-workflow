@@ -7,7 +7,7 @@ Questions: jchilders@anl.gov
 
 ### Prerequisites
 
-- Python 3.8+ with virtual environment
+- Python 3.X with virtual environment
 - Access to ALCF systems: Crux, Aurora
 - Globus authentication set up
 - Aurora endpoint configured
