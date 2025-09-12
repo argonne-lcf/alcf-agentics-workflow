@@ -15,11 +15,6 @@ import sys
 # Add globus_compute_sdk import for endpoint operations
 from globus_compute_sdk import Client
 
-# Import shared Globus interface
-import sys
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
-from tools.globus_interface import check_auth_status, get_auth_object
-
 def run(cmd):
    """Execute command and return stdout or raise on error"""
    ret = subprocess.run(cmd, capture_output=True, text=True)
@@ -29,13 +24,53 @@ def run(cmd):
 
 
 def check_auth(max_age_days=30):
-   """Check Globus authentication token freshness using shared interface"""
+   """Check Globus authentication token freshness using globus CLI"""
    logging.info("Checking Globus authentication…")
-   return check_auth_status(max_age_days)
+   
+   try:
+      # Check if globus CLI is available
+      if not shutil.which("globus"):
+         logging.error("❌ Globus CLI not found in PATH")
+         logging.info("💡 Install with: pip install globus-cli")
+         return False
+      
+      # Check session status using globus CLI
+      result = run(["globus", "session", "show", "--format", "json"])
+      session_data = json.loads(result)
+      
+      if not session_data.get("identities"):
+         logging.warning("⚠️  No active Globus session found")
+         logging.info("💡 Run: globus login")
+         return False
+      
+      # Check token age
+      oldest_auth = None
+      for identity in session_data["identities"]:
+         auth_time = datetime.datetime.fromisoformat(identity["auth_time"].replace('Z', '+00:00'))
+         if oldest_auth is None or auth_time < oldest_auth:
+            oldest_auth = auth_time
+      
+      if oldest_auth:
+         age_days = (datetime.datetime.now(datetime.timezone.utc) - oldest_auth).days
+         if age_days > max_age_days:
+            logging.warning(f"⚠️  Tokens are {age_days} days old (>{max_age_days} days)")
+            logging.info("💡 Consider running: globus login")
+         else:
+            logging.info(f"✅ Globus authentication valid ({age_days} days old)")
+      
+      return True
+      
+   except (subprocess.CalledProcessError, json.JSONDecodeError, KeyError) as e:
+      logging.error(f"❌ Authentication check failed: {e}")
+      logging.info("💡 Try: globus login")
+      return False
+   except Exception as e:
+      logging.error(f"❌ Unexpected error checking authentication: {e}")
+      return False
 
 
 def check_endpoint(eid):
-   """Check Globus Compute endpoint status using SDK"""
+   """Check Globus Compute endpoint status using SDK with native authentication"""
    if not eid:
       logging.error("❌ GC_ENDPOINT_ID not set")
       logging.info("💡 Set environment variable: export GC_ENDPOINT_ID=your-endpoint-id")
@@ -44,15 +79,18 @@ def check_endpoint(eid):
    logging.info("Checking endpoint %s …", eid)
    
    try:
-      # Create Globus Compute client
+      # Create Globus Compute client - let it handle its own authentication
+      logging.debug("Creating Globus Compute client with native authentication...")
       compute_client = Client()
       
       # Get endpoint status using SDK
+      logging.debug("Querying endpoint status...")
       status_info = compute_client.get_endpoint_status(eid)
       
       # Check if endpoint is available/online
       if status_info and status_info.get('status') in ['online', 'active', 'available']:
          logging.info("✅ Endpoint is online and available")
+         logging.debug(f"Endpoint status details: {status_info}")
          return True
       else:
          status = status_info.get('status', 'unknown') if status_info else 'unknown'
@@ -62,7 +100,8 @@ def check_endpoint(eid):
          
    except Exception as e:
       logging.error(f"❌ Endpoint check failed: {e}")
-      logging.info("💡 Try: globus-compute-endpoint start %s", eid)
+      logging.info("💡 Try running: globus login")
+      logging.info("💡 Then: globus-compute-endpoint start %s", eid)
       return False
 
 
