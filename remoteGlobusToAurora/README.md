@@ -21,7 +21,7 @@ cd <repo-path>                        # enter repo (top level)
 module load frameworks                # get python in PATH
 python -m venv venv                   # setup virtual environment
 source venv/bin/activate              # activate virtual environment
-pip install -r requirements.txt       # install dependencies for the demo
+pip install -r requirements.txt       # install dependencies for the demo (at root level)
 pip install globus-compute-endpoint   # install globus compute endpoint
 
 # next we need to generate the endpoint configuration file for Globus Compute
@@ -67,7 +67,7 @@ python -m venv venv
 source venv/bin/activate
 
 # Install dependencies
-pip install -r requirements.txt  # install dependencies
+pip install -r ../requirements.txt  # install dependencies (requirements.txt is at project root)
 ```
 
 ### Configuration on Crux Login Nodes
@@ -75,7 +75,7 @@ pip install -r requirements.txt  # install dependencies
 ```bash
 # Set required environment variables
 export GC_ENDPOINT_ID="<UUID>" # from the previous step
-export OPENAI_MODEL="meta-llama/Llama-3.3-70B-Instruct"  # Optional: defaults to this
+export OPENAI_MODEL="meta-llama/Meta-Llama-3.1-8B-Instruct"  # Optional: defaults to this
 
 # you need the http proxy setup to get off of Crux to the Sophia Inference Service
 export http_proxy="http://proxy.alcf.anl.gov:3128"
@@ -109,7 +109,7 @@ This will run the workflow and print the results to the screen.
 ```bash
 30-07 14:13 | INFO     | 🚀 Starting Agentic Workflow Demo
 30-07 14:13 | INFO     | Target protein: p53
-30-07 14:13 | INFO     | Model: meta-llama/Llama-3.3-70B-Instruct
+30-07 14:13 | INFO     | Model: meta-llama/Meta-Llama-3.1-8B-Instruct
 30-07 14:13 | INFO     | Endpoint: 7400de92-807e-4848-908e-a76ffb21bee9
 30-07 14:13 | INFO     | 🔄 Running workflow...
 30-07 14:13 | INFO     | 🧠 Querying LLM for protein analysis...
@@ -164,53 +164,72 @@ python remoteGlobusToAurora/src/main.py \
 ## 📁 Project Structure
 
 ```
-agentic-workflow-demo/
+remoteGlobusToAurora/
 ├── src/
 │   ├── main.py              # CLI orchestrator with LangGraph
 │   ├── sim_kernel.py        # OpenMM simulation for Aurora
 │   └── tools/
+│       ├── __init__.py      # Python package marker
 │       ├── compute.py       # Globus Compute wrapper
 │       └── globus_interface.py # Globus authentication interface
 ├── scripts/
 │   ├── globus_check.py      # Environment verification
-│   └── gen_endpoint_config.py # Endpoint configuration generator
+│   ├── gen_endpoint_config.py # Endpoint configuration generator
+│   └── run_openmm_test.sh   # Aurora OpenMM test runner
 ├── tests/
-│   └── test_smoke.py        # Unit tests with mocks
-├── requirements.txt         # Python dependencies
+│   ├── test_smoke.py        # Unit tests with mocks
+│   ├── test_openmm_aurora.py # OpenMM Aurora GPU tests
+│   └── README_openmm_test.md # OpenMM test documentation
+├── requirements.txt         # Python dependencies (at root level)
 └── README.md               # This file
 ```
 
 ## 🔧 Components
 
 ### LangGraph Agent (`src/main.py`)
-- **Purpose**: Orchestrates the entire workflow
-- **Features**: CLI interface, logging, error handling
-- **Nodes**: LLM analysis → Simulation → Report generation
+- **Purpose**: Orchestrates the entire workflow using LangGraph state machine
+- **Features**: CLI interface with argparse, structured logging, error handling, timeout management
+- **Workflow**: LLM analysis → GPU simulation → Report generation
+- **Model**: Configured for meta-llama/Meta-Llama-3.1-8B-Instruct on Sophia by default
+- **Usage**: `python remoteGlobusToAurora/src/main.py --protein p53 --log-level INFO`
 
 ### Simulation Kernel (`src/sim_kernel.py`)
-- **Purpose**: Runs MD simulations on Aurora GPUs
-- **Technology**: OpenMM with OpenCL for Intel GPUs
-- **Output**: Energy, RMSD, stability metrics
+- **Purpose**: Runs molecular dynamics simulations on Aurora Intel GPUs
+- **Technology**: OpenMM with OpenCL backend for Intel GPU acceleration
+- **Output**: Stability metrics, RMSD calculations, potential energy, execution timings
+- **Features**: Simplified protein simulation with configurable parameters
 
 ### Globus Compute Wrapper (`src/tools/compute.py`)
-- **Purpose**: Submits and monitors remote compute jobs
-- **Features**: Job submission, timeout handling, status checks
-- **Target**: Aurora compute nodes
+- **Purpose**: Manages remote job submission and monitoring via Globus Compute
+- **Features**: Asynchronous job submission, timeout handling, status monitoring, error recovery
+- **Target**: Aurora compute nodes with configured endpoints
+- **Integration**: Handles import path resolution for remote execution
 
 ### Globus Authentication (`src/tools/globus_interface.py`)
-- **Purpose**: Handles Globus authentication for ALCF services
-- **Features**: Token management, authentication flow, status checking
-- **Usage**: `python remoteGlobusToAurora/src/tools/globus_interface.py authenticate`
+- **Purpose**: Centralized Globus authentication for ALCF services
+- **Features**: Token management, refresh handling, domain-based authentication
+- **Clients**: Sophia inference service integration, Globus Compute access
+- **CLI**: `python remoteGlobusToAurora/src/tools/globus_interface.py authenticate [--force]`
+- **API**: Programmatic token retrieval with `get_access_token()`
 
 ### Endpoint Configuration Generator (`scripts/gen_endpoint_config.py`)
-- **Purpose**: Generates Globus Compute endpoint configuration files
-- **Features**: Configures Aurora-specific settings, virtual environment paths
-- **Usage**: `python remoteGlobusToAurora/scripts/gen_endpoint_config.py --repo-path $PWD --venv-path $PWD/venv -o my-endpoint-config.yaml`
+- **Purpose**: Generates Aurora-optimized Globus Compute endpoint configurations
+- **Features**: PBS job configuration, virtual environment setup, PYTHONPATH management
+- **Customizable**: Worker count, resource allocation, queue settings, walltime
+- **Usage**: `python remoteGlobusToAurora/scripts/gen_endpoint_config.py --repo-path $PWD --venv-path $PWD/venv -o endpoint-config.yaml`
 
 ### Environment Checker (`scripts/globus_check.py`)
-- **Purpose**: Validates setup before running workflow
-- **Checks**: Python packages, Globus auth, endpoint status
+- **Purpose**: Comprehensive setup validation and troubleshooting
+- **Checks**: Globus authentication status, endpoint connectivity, token freshness
+- **Features**: Age-based token warnings, endpoint status verification
 - **Usage**: `python remoteGlobusToAurora/scripts/globus_check.py`
+
+### OpenMM Test Suite (`tests/test_openmm_aurora.py`)
+- **Purpose**: Validates OpenMM functionality and GPU acceleration on Aurora
+- **Features**: Platform detection, performance benchmarking, Intel GPU verification
+- **Platforms**: Automatic detection, OpenCL/CPU comparison, device enumeration
+- **Usage**: `python remoteGlobusToAurora/tests/test_openmm_aurora.py --platform auto --steps 1000`
+- **Script**: `./remoteGlobusToAurora/scripts/run_openmm_test.sh [platform] [steps]`
 
 ## 📊 Simulation Details
 
@@ -226,18 +245,94 @@ The demo runs simplified molecular dynamics simulations with the following chara
 
 ## 🧪 Testing
 
+The project includes comprehensive testing for both the workflow components and Aurora GPU functionality.
+
+### Unit Tests
+
 ```bash
-# Run unit tests
-python -m pytest tests/ -v
+# Run all unit tests
+python -m pytest remoteGlobusToAurora/tests/ -v
 
 # Run with coverage
-python -m pytest tests/ --cov=src --cov-report=html
+python -m pytest remoteGlobusToAurora/tests/ --cov=src --cov-report=html
 
 # Test individual components
-python -m pytest tests/test_smoke.py::TestCLI -v
+python -m pytest remoteGlobusToAurora/tests/test_smoke.py::TestCLI -v
 ```
 
+### OpenMM Aurora GPU Testing
 
+Test OpenMM functionality and GPU acceleration on Aurora:
+
+```bash
+# Quick test using the shell script (recommended)
+./remoteGlobusToAurora/scripts/run_openmm_test.sh
+
+# Test with specific parameters
+./remoteGlobusToAurora/scripts/run_openmm_test.sh OpenCL 2000
+
+# Direct Python execution with platform detection
+python remoteGlobusToAurora/tests/test_openmm_aurora.py --platform auto
+
+# Test specific platform
+python remoteGlobusToAurora/tests/test_openmm_aurora.py --platform OpenCL --steps 1000
+
+# Performance benchmarking
+python remoteGlobusToAurora/tests/test_openmm_aurora.py --benchmark --particles 5000
+
+# Debug GPU detection
+python remoteGlobusToAurora/tests/test_openmm_aurora.py --log-level DEBUG
+
+# Run OpenMM tests via pytest
+python -m pytest remoteGlobusToAurora/tests/test_openmm_aurora.py -v
+```
+
+### Expected Test Results
+
+**Successful GPU Detection (Aurora Intel GPU):**
+```
+✓ OpenMM version: 8.1.0
+✓ Available platforms: CPU, OpenCL
+✓ Default platform: OpenCL
+🎯 GPU DETECTED: OpenCL platform active (Aurora Intel GPU)
+Performance: ~8000+ steps/second
+```
+
+**CPU Fallback:**
+```
+⚠️ CPU ONLY: Using CPU platform (GPU not available/detected)
+Performance: ~1000-3000 steps/second
+```
+
+See `remoteGlobusToAurora/tests/README_openmm_test.md` for detailed testing documentation.
+
+## 📦 Dependencies
+
+The project uses the following key dependencies (see `requirements.txt` at project root):
+
+**Core Workflow:**
+- `langgraph>=0.1.0` - State machine orchestration
+- `langchain>=0.1.0` - LLM integration framework  
+- `langchain-openai>=0.1.0` - OpenAI/Sophia API integration
+
+**Globus Integration:**
+- `globus-sdk>=3.0.0` - Globus authentication and services
+- `globus-compute-sdk>=2.0.0` - Remote compute job submission
+
+**Simulation:**
+- `openmm>=8.0.0` - Molecular dynamics simulation engine
+
+**Development/Testing:**
+- `pytest>=7.0.0` - Unit testing framework
+- `pytest-mock>=3.10.0` - Mocking capabilities
+- `ruff>=0.1.0` - Code linting and formatting
+
+## 🚀 System Requirements
+
+- **Python**: 3.10+ (matching Aurora Framework module)
+- **Platforms**: Crux (orchestration), Aurora (compute), Sophia (inference)
+- **GPU**: Intel GPUs on Aurora (OpenCL support)
+- **Network**: Proxy configuration for external API access from Crux
 
 ---
 
