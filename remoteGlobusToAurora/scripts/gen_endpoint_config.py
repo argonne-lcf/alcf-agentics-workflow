@@ -151,7 +151,7 @@ def generate_worker_init(args):
    
    worker_init = f"""cd {args.repo_path}
 source {args.venv_path}/bin/activate
-export PYTHONPATH={args.repo_path}/src:$PYTHONPATH"""
+export PYTHONPATH={args.repo_path}/remoteGlobusToAuror/src:$PYTHONPATH"""
    
    return worker_init
 
