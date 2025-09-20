@@ -34,6 +34,7 @@ class AgentState(TypedDict):
    simulation_params: Dict[str, Any]
    simulation_result: Dict[str, Any]
    final_report: str
+   max_simulation_time: int
 
 
 def parse_cli():
@@ -150,7 +151,9 @@ def simulation_node(state: AgentState) -> AgentState:
    
    try:
       gc_wrapper = GlobusComputeWrapper()
-      result = gc_wrapper.submit_simulation(state["simulation_params"])
+      timeout = state.get("max_simulation_time", 180)
+      logger.info(f"⏱️  Using simulation timeout: {timeout}s")
+      result = gc_wrapper.submit_simulation(state["simulation_params"], timeout=timeout)
       
       state["simulation_result"] = result
       logger.info(f"✅ Simulation completed: {result.get('status', 'unknown')}")
@@ -252,7 +255,8 @@ def main():
       simulation_result={},
       final_report="",
       model=args.model,
-      endpoint=args.endpoint
+      endpoint=args.endpoint,
+      max_simulation_time=args.max_simulation_time
    )
    
    try:

@@ -40,6 +40,17 @@ class TestCLI:
          assert args.protein == "insulin"
          assert args.model == "gpt-4"
          assert args.log_level == "DEBUG"
+   
+   def test_parse_cli_custom_timeout(self):
+      """Test CLI parsing with custom timeout"""
+      test_args = [
+         'main.py', 
+         '--max-simulation-time', '1800',
+         '-t', '900'  # This should override the previous value
+      ]
+      with patch('sys.argv', test_args):
+         args = parse_cli()
+         assert args.max_simulation_time == 900
 
 
 class TestSimulationKernel:
@@ -188,7 +199,8 @@ class TestWorkflow:
          analysis_request="",
          simulation_params={},
          simulation_result={},
-         final_report=""
+         final_report="",
+         max_simulation_time=3600
       )
       
       result_state = llm_analysis_node(state)
@@ -217,13 +229,19 @@ class TestWorkflow:
          analysis_request="",
          simulation_params={"protein": "insulin", "steps": 5000},
          simulation_result={},
-         final_report=""
+         final_report="",
+         max_simulation_time=600
       )
       
       result_state = simulation_node(state)
       
       assert result_state["simulation_result"]["status"] == "completed"
       assert "final_energy" in result_state["simulation_result"]
+      # Verify that the timeout was passed correctly
+      mock_gc_instance.submit_simulation.assert_called_with(
+         {"protein": "insulin", "steps": 5000}, 
+         timeout=600
+      )
    
    def test_report_node_success(self):
       """Test report generation for successful simulation"""
@@ -239,7 +257,8 @@ class TestWorkflow:
             "rmsd": 1.3,
             "stability_score": 0.85
          },
-         final_report=""
+         final_report="",
+         max_simulation_time=3600
       )
       
       result_state = report_node(state)
@@ -258,7 +277,8 @@ class TestWorkflow:
          analysis_request="",
          simulation_params={},
          simulation_result={"error": "Endpoint unreachable"},
-         final_report=""
+         final_report="",
+         max_simulation_time=3600
       )
       
       result_state = report_node(state)
