@@ -57,13 +57,13 @@ def parse_cli():
       "--accelerators",
       type=int,
       default=12,
-      help="Number of available accelerators (default: 12)"
+      help="Number of available accelerators (default: 12, overridden to 4 for Polaris)"
    )
    parser.add_argument(
       "--max-workers",
       type=int,
       default=12,
-      help="Maximum workers per node (default: 12)"
+      help="Maximum workers per node (default: 12, overridden to 4 for Polaris)"
    )
    parser.add_argument(
       "--prefetch-capacity",
@@ -207,11 +207,23 @@ def generate_config(args):
    system = detect_system()
    worker_init = generate_worker_init(args, system)
    
+   # Apply system-specific settings
+   if system == 'polaris':
+      # Polaris-specific settings
+      accelerators = 4
+      max_workers = 4
+      scheduler_options = "#PBS -l filesystems=home:eagle"
+   else:
+      # Aurora and default settings
+      accelerators = args.accelerators
+      max_workers = args.max_workers
+      scheduler_options = "#PBS -l filesystems=home:flare"
+   
    config = {
       "engine": {
-         "available_accelerators": args.accelerators,
+         "available_accelerators": accelerators,
          "max_retries_on_system_failure": args.max_retries,
-         "max_workers_per_node": args.max_workers,
+         "max_workers_per_node": max_workers,
          "prefetch_capacity": args.prefetch_capacity,
          "provider": {
             "account": args.account,
@@ -226,7 +238,7 @@ def generate_config(args):
             "min_blocks": args.min_blocks,
             "nodes_per_block": args.nodes_per_block,
             "queue": args.queue,
-            "scheduler_options": "#PBS -l filesystems=home:flare",
+            "scheduler_options": scheduler_options,
             "select_options": "ngpus=1",
             "type": "PBSProProvider",
             "walltime": args.walltime,
@@ -276,14 +288,22 @@ def main():
       
       # Log key settings
       logging.info(f"System: {system}, Account: {args.account}, Queue: {args.queue}")
-      logging.info(f"Walltime: {args.walltime}, Max workers: {args.max_workers}")
+      logging.info(f"Walltime: {args.walltime}")
       
-      # Log paths based on system
+      # Log system-specific settings
       if system == 'polaris':
-         logging.info("Using Polaris-specific paths (hardcoded)")
+         logging.info("Using Polaris-specific settings:")
+         logging.info("  - Accelerators: 4, Max workers: 4")
+         logging.info("  - Scheduler options: #PBS -l filesystems=home:eagle")
+         logging.info("  - Using hardcoded Polaris paths")
       elif system == 'aurora':
-         logging.info(f"Venv path: {args.venv_path}")
-         logging.info(f"Repo path: {args.repo_path}")
+         logging.info("Using Aurora-specific settings:")
+         logging.info(f"  - Accelerators: {args.accelerators}, Max workers: {args.max_workers}")
+         logging.info("  - Scheduler options: #PBS -l filesystems=home:flare")
+         logging.info(f"  - Venv path: {args.venv_path}")
+         logging.info(f"  - Repo path: {args.repo_path}")
+      else:
+         logging.info(f"Max workers: {args.max_workers}")
       
    except Exception as e:
       logging.error(f"Failed to write configuration: {e}")
