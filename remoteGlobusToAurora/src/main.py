@@ -10,6 +10,7 @@ import logging
 import os
 import sys
 import time
+import json
 from datetime import datetime
 from typing import Dict, Any
 
@@ -105,32 +106,48 @@ def llm_analysis_node(state: AgentState) -> AgentState:
       )
       
       prompt = f"""
-      Analyze the protein {state['protein']} and suggest molecular dynamics simulation parameters.
-      
-      Please provide:
-      1. Brief protein description
-      2. Recommended simulation parameters (timestep, temperature, steps)
-      3. Key stability metrics to monitor
-      
-      Format your response as a structured analysis.
+You are an expert in molecular dynamics simulation. Given the protein, {state['protein']}, suggest settings to run OpenMM, the molecular dynamics simulation engine, for this protein. We would like to measure behavior across the range.
+
+Please reply with only JSON, no formatting or extra text.
+
+The JSON should have the following fields:
+1. A single timestep (range from 0.0001 to 0.01)
+2. A single temperature (range from 200 to 500)
+3. A single steps setting (range from 100 to 50000)
+
+Format your response as a JSON object. For example:
+``json
+{{
+   "timestep": 0.002,
+   "temperature": 300,
+   "steps": 10000
+}}
+```
+Be sure to reply with only JSON, no formatting or extra text, no more than one setting for each field. No lists.
       """
       
       # Query the LLM using LangChain
       response = llm.invoke(prompt)
-      
+
+      logger.debug(f"LLM response: {response.content[:200]}...")
       state["analysis_request"] = prompt
       state["messages"] = add_messages(state.get("messages", []), [response])
-      
-      # Extract simulation parameters (simplified for demo)
-      state["simulation_params"] = {
-         "timestep": 0.002,  # ps
-         "temperature": 300,  # K
-         "steps": 10000,
-         "protein": state["protein"]
-      }
+
+      try:
+         simulation_params = json.loads(response.content)
+         state["simulation_params"] = simulation_params
+         logger.debug(f"✅ LLM output parsed: {simulation_params}")
+      except Exception as e:
+         # fallback to default values
+         state["simulation_params"] = {
+            "timestep": 0.002,  # ps
+            "temperature": 300, # K
+            "steps": 10000,
+            "protein": state["protein"]
+         }   
+         logger.warning(f"❌ LLM analysis failed, fall back to test inputs. Parse Error: {e}")
       
       logger.info("✅ LLM analysis completed")
-      logger.debug(f"LLM response: {response.content[:200]}...")
       return state
       
    except Exception as e:
