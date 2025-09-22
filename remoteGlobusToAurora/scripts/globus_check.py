@@ -4,8 +4,6 @@ Utility to confirm Globus Auth freshness and Aurora endpoint status.
 3‑space indents per style.
 """
 import argparse
-import datetime
-import json
 import logging
 import os
 import shutil
@@ -14,6 +12,11 @@ import sys
 
 # Add globus_compute_sdk import for endpoint operations
 from globus_compute_sdk import Client
+
+# Import the shared Globus auth interface
+import sys
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+from tools.globus_interface import check_auth_status
 
 def run(cmd):
    """Execute command and return stdout or raise on error"""
@@ -24,48 +27,16 @@ def run(cmd):
 
 
 def check_auth(max_age_days=30):
-   """Check Globus authentication token freshness using globus CLI"""
+   """Check Globus authentication using shared globus_interface module"""
    logging.info("Checking Globus authentication…")
    
    try:
-      # Check if globus CLI is available
-      if not shutil.which("globus"):
-         logging.error("❌ Globus CLI not found in PATH")
-         logging.info("💡 Install with: pip install globus-cli")
-         return False
+      # Use the shared authentication check function
+      return check_auth_status(max_age_days)
       
-      # Check session status using globus CLI
-      result = run(["globus", "session", "show", "--format", "json"])
-      session_data = json.loads(result)
-      
-      if not session_data.get("identities"):
-         logging.warning("⚠️  No active Globus session found")
-         logging.info("💡 Run: globus login")
-         return False
-      
-      # Check token age
-      oldest_auth = None
-      for identity in session_data["identities"]:
-         auth_time = datetime.datetime.fromisoformat(identity["auth_time"].replace('Z', '+00:00'))
-         if oldest_auth is None or auth_time < oldest_auth:
-            oldest_auth = auth_time
-      
-      if oldest_auth:
-         age_days = (datetime.datetime.now(datetime.timezone.utc) - oldest_auth).days
-         if age_days > max_age_days:
-            logging.warning(f"⚠️  Tokens are {age_days} days old (>{max_age_days} days)")
-            logging.info("💡 Consider running: globus login")
-         else:
-            logging.info(f"✅ Globus authentication valid ({age_days} days old)")
-      
-      return True
-      
-   except (subprocess.CalledProcessError, json.JSONDecodeError, KeyError) as e:
-      logging.error(f"❌ Authentication check failed: {e}")
-      logging.info("💡 Try: globus login")
-      return False
    except Exception as e:
-      logging.error(f"❌ Unexpected error checking authentication: {e}")
+      logging.error(f"❌ Authentication check failed: {e}")
+      logging.info("💡 Run authentication with: python src/tools/globus_interface.py authenticate")
       return False
 
 
