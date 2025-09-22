@@ -4,18 +4,6 @@
 
 Welcome to the comprehensive tutorial for the **remoteGlobusToAurora** workflow. This tutorial is designed for new ALCF users who want to understand and effectively use this end-to-end agentic workflow that integrates a client system (Crux/laptop), inference system (Sophia), and host compute system (Aurora/Polaris) systems.
 
-## 📚 Table of Contents
-
-1. [Overview and Architecture](#overview-and-architecture)
-2. [Prerequisites and System Requirements](#prerequisites-and-system-requirements)
-3. [Understanding the Components](#understanding-the-components)
-4. [Step-by-Step Setup Guide](#step-by-step-setup-guide)
-5. [Running Your First Workflow](#running-your-first-workflow)
-6. [Understanding the Code](#understanding-the-code)
-7. [Customization and Extension](#customization-and-extension)
-8. [Troubleshooting Guide](#troubleshooting-guide)
-9. [Best Practices](#best-practices)
-10. [Additional Resources](#additional-resources)
 
 ## 🏗️ Overview and Architecture
 
