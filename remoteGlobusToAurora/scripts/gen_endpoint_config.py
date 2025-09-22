@@ -10,6 +10,18 @@ import os
 import sys
 from pathlib import Path
 import yaml
+from yaml import Loader, Dumper
+
+
+def represent_literal_str(dumper, data):
+   """Custom representer for literal block scalars."""
+   if '\n' in data:
+      return dumper.represent_scalar('tag:yaml.org,2002:str', data, style='|')
+   return dumper.represent_scalar('tag:yaml.org,2002:str', data)
+
+
+# Add custom representer for multi-line strings
+yaml.add_representer(str, represent_literal_str)
 
 
 def parse_cli():
@@ -151,7 +163,7 @@ def generate_worker_init(args):
    
    worker_init = f"""cd {args.repo_path}
 source {args.venv_path}/bin/activate
-export PYTHONPATH={args.repo_path}/remoteGlobusToAuror/src:$PYTHONPATH"""
+export PYTHONPATH={args.repo_path}/remoteGlobusToAurora/src:$PYTHONPATH"""
    
    return worker_init
 
@@ -208,7 +220,7 @@ def main():
    
    try:
       with open(output_path, 'w') as f:
-         yaml.dump(config, f, default_flow_style=False, indent=2)
+         yaml.dump(config, f, indent=2)
       
       logging.info(f"Configuration successfully written to {output_path}")
       
