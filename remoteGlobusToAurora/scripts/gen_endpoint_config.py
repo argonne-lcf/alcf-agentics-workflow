@@ -1,12 +1,14 @@
 #!/usr/bin/env python
 """
-Generate Globus Compute Endpoint configuration for Aurora system.
-Supports customizable options with sensible defaults for Aurora.
+Generate Globus Compute Endpoint configuration for Aurora or Polaris systems.
+Auto-detects the system based on hostname and uses appropriate defaults.
+Supports customizable options with sensible defaults for both systems.
 """
 
 import argparse
 import logging
 import os
+import socket
 import sys
 from pathlib import Path
 import yaml
@@ -24,11 +26,23 @@ def represent_literal_str(dumper, data):
 yaml.add_representer(str, represent_literal_str)
 
 
+def detect_system():
+   """Detect if running on Aurora or Polaris based on hostname."""
+   hostname = socket.gethostname().lower()
+   
+   if 'aurora' in hostname:
+      return 'aurora'
+   elif 'polaris' in hostname:
+      return 'polaris'
+   else:
+      return None
+
+
 def parse_cli():
    """Parse command line arguments."""
    parser = argparse.ArgumentParser(
       prog="gen-endpoint-config",
-      description="Generate Globus Compute Endpoint configuration for Aurora"
+      description="Generate Globus Compute Endpoint configuration for Aurora or Polaris (auto-detected)"
    )
    
    # Output options
@@ -114,17 +128,17 @@ def parse_cli():
    # Worker init customization - simplified
    parser.add_argument(
       "--venv-path",
-      required=True,
       help="This should be the path to the virtual environment you setup for the globus compute endpoint. "
            "For example: '/lus/flare/projects/datascience/username/my_project/venv/bin/activate'. "
-           "This is the full path to the activate script in your virtual environment's bin directory."
+           "This is the full path to the activate script in your virtual environment's bin directory. "
+           "Required for Aurora, ignored for Polaris (uses hardcoded paths)."
    )
    parser.add_argument(
       "--repo-path", 
-      required=True,
       help="This is the path in which the repository code is located that should be added to PYTHONPATH. "
            "For example: '/lus/flare/projects/datascience/username/my_project/src'. "
-           "This allows the compute workers to import your project modules and dependencies."
+           "This allows the compute workers to import your project modules and dependencies. "
+           "Required for Aurora, ignored for Polaris (uses hardcoded paths)."
    )
    parser.add_argument(
       "--custom-worker-init",
@@ -151,8 +165,8 @@ def config_logging(level):
    )
 
 
-def generate_worker_init(args):
-   """Generate worker_init script based on arguments."""
+def generate_worker_init(args, system=None):
+   """Generate worker_init script based on arguments and detected system."""
    if args.custom_worker_init:
       try:
          with open(args.custom_worker_init, 'r') as f:
@@ -161,16 +175,37 @@ def generate_worker_init(args):
          logging.error(f"Custom worker init file not found: {args.custom_worker_init}")
          sys.exit(1)
    
-   worker_init = f"""cd {args.repo_path}
+   # Auto-detect system if not provided
+   if system is None:
+      system = detect_system()
+   
+   if system == 'polaris':
+      worker_init = """module use /soft/modulefiles
+module load conda
+source /home/parton/polaris/alcf-agentics-workflow/venv/bin/activate
+cd /home/parton/polaris/alcf-agentics-workflow/remoteGlobusToAurora
+
+export PYTHONPATH=/home/parton/polaris/alcf-agentics-workflow/remoteGlobusToAurora/src:$PYTHONPATH
+export TMPDIR=/tmp"""
+   elif system == 'aurora':
+      worker_init = f"""cd {args.repo_path}
 source {args.venv_path}/bin/activate
 export PYTHONPATH={args.repo_path}/remoteGlobusToAurora/src:$PYTHONPATH"""
+   else:
+      # System not detected
+      logging.error("Could not detect Aurora or Polaris system from hostname")
+      logging.error(f"Hostname: {socket.gethostname()}")
+      logging.error("Please use --custom-worker-init to provide a custom worker initialization script")
+      sys.exit(1)
    
    return worker_init
 
 
 def generate_config(args):
    """Generate the full endpoint configuration."""
-   worker_init = generate_worker_init(args)
+   # Detect system and generate appropriate worker_init
+   system = detect_system()
+   worker_init = generate_worker_init(args, system)
    
    config = {
       "engine": {
@@ -201,7 +236,7 @@ def generate_config(args):
       }
    }
    
-   return config
+   return config, system
 
 
 def main():
@@ -209,10 +244,25 @@ def main():
    args = parse_cli()
    config_logging(args.log_level)
    
-   logging.info("Generating Globus Compute Endpoint configuration for Aurora")
+   # Detect system first for better logging
+   detected_system = detect_system()
+   if detected_system:
+      logging.info(f"Detected system: {detected_system.upper()}")
+      logging.info(f"Generating Globus Compute Endpoint configuration for {detected_system.upper()}")
+   else:
+      logging.info("Generating Globus Compute Endpoint configuration")
+   
+   # Validate required arguments for Aurora
+   if detected_system == 'aurora' and not args.custom_worker_init:
+      if not args.venv_path:
+         logging.error("--venv-path is required for Aurora system")
+         sys.exit(1)
+      if not args.repo_path:
+         logging.error("--repo-path is required for Aurora system")
+         sys.exit(1)
    
    # Generate configuration
-   config = generate_config(args)
+   config, system = generate_config(args)
    
    # Write to output file
    output_path = Path(args.output)
@@ -225,10 +275,15 @@ def main():
       logging.info(f"Configuration successfully written to {output_path}")
       
       # Log key settings
-      logging.info(f"Account: {args.account}, Queue: {args.queue}")
+      logging.info(f"System: {system}, Account: {args.account}, Queue: {args.queue}")
       logging.info(f"Walltime: {args.walltime}, Max workers: {args.max_workers}")
-      logging.info(f"Venv path: {args.venv_path}")
-      logging.info(f"Repo path: {args.repo_path}")
+      
+      # Log paths based on system
+      if system == 'polaris':
+         logging.info("Using Polaris-specific paths (hardcoded)")
+      elif system == 'aurora':
+         logging.info(f"Venv path: {args.venv_path}")
+         logging.info(f"Repo path: {args.repo_path}")
       
    except Exception as e:
       logging.error(f"Failed to write configuration: {e}")
