@@ -147,6 +147,7 @@ On Polaris:
 ssh <username>@polaris.alcf.anl.gov
 
 # Load required modules (on Polaris only)
+module use /soft/modulefiles
 module load conda
 conda activate
 ```
