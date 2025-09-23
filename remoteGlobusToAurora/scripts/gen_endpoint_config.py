@@ -182,10 +182,10 @@ def generate_worker_init(args, system=None):
    if system == 'polaris':
       worker_init = """module use /soft/modulefiles
 module load conda
-source /home/parton/polaris/alcf-agentics-workflow/venv/bin/activate
-cd /home/parton/polaris/alcf-agentics-workflow/remoteGlobusToAurora
+source {args.venv_path}/bin/activate
+cd {args.repo_path}
 
-export PYTHONPATH=/home/parton/polaris/alcf-agentics-workflow/remoteGlobusToAurora/src:$PYTHONPATH
+export PYTHONPATH={args.repo_path}/remoteGlobusToAurora/src:$PYTHONPATH
 export TMPDIR=/tmp"""
    elif system == 'aurora':
       worker_init = f"""cd {args.repo_path}
@@ -295,7 +295,8 @@ def main():
          logging.info("Using Polaris-specific settings:")
          logging.info("  - Accelerators: 4, Max workers: 4")
          logging.info("  - Scheduler options: #PBS -l filesystems=home:eagle")
-         logging.info("  - Using hardcoded Polaris paths")
+         logging.info(f"  - Venv path: {args.venv_path}")
+         logging.info(f"  - Repo path: {args.repo_path}")
       elif system == 'aurora':
          logging.info("Using Aurora-specific settings:")
          logging.info(f"  - Accelerators: {args.accelerators}, Max workers: {args.max_workers}")

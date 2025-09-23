@@ -176,8 +176,14 @@ python --version # 3.11.X on Polaris as of 9/22/2025
 python remoteGlobusToAurora/scripts/gen_endpoint_config.py \
   --repo-path $PWD \
   --venv-path $PWD/venv \
-  -o my-endpoint-config.yaml
+  -o my-endpoint-config.yaml \
+  --account <account_name> # default is internal to ALCF only
+
+# Additional arguments
+# --queue <queue_name> # default is debug
 ```
+
+
 
 **Understanding the Configuration**:
 - **PBS Integration**: Configures PBS job scheduling
@@ -190,10 +196,10 @@ python remoteGlobusToAurora/scripts/gen_endpoint_config.py \
 
 ```bash
 # Create endpoint (one-time setup)
-globus-compute-endpoint configure --endpoint-config my-polaris-config.yaml my-polaris-endpoint
+globus-compute-endpoint configure --endpoint-config my-endpoint-config.yaml my-globus-endpoint
 
 # Start the endpoint
-globus-compute-endpoint start my-polaris-endpoint
+globus-compute-endpoint start my-globus-endpoint
 
 # Check endpoints running (helpful in the future to check if endpoint is running)
 globus-compute-endpoint list
@@ -302,6 +308,7 @@ python remoteGlobusToAurora/src/tools/globus_interface.py authenticate
 
 ```bash
 # Comprehensive environment check
+# it may ask to authenticate again, similar to step above
 python remoteGlobusToAurora/scripts/globus_check.py
 
 # Expected output:
