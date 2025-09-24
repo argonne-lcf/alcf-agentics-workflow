@@ -34,6 +34,21 @@ Agentic workflows are intelligent computational pipelines that use AI agents to 
 - AI-guided parameter selection
 - Remote GPU job submission
 
+### 2. [Local Agent Driven Simulation on Aurora](./localWorkflow)
+
+**Description**: An end-to-end workflow that demonstrates an agentic workflow run entirely within the same batch job. This means the LangGraph agent, the language model, then the simulations are all run on Aurora or Polaris compute nodes. 
+
+**Technologies**:
+- **LangGraph** - Agent orchestration framework
+- **Local LLM Service via vLLM** - Protein analysis and simulation planning
+- **Aurora GPU** - High-performance molecular dynamics simulation
+
+**Use Cases**:
+- Scientific workflow automation
+- AI-guided parameter selection
+- Low-latency workflows 
+- Use of tailored LLMs
+
 ---
 
 ## 🚀 Getting Started
