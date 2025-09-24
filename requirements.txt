@@ -5,6 +5,8 @@ langchain-openai>=0.1.0
 globus-sdk>=3.0.0
 globus-compute-sdk>=2.0.0
 openmm>=8.0.0
+cloudpickle
+huggingface-hub
 
 # Testing
 pytest>=7.0.0

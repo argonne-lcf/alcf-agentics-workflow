@@ -10,21 +10,20 @@ import logging
 import os
 import sys
 import time
-import json
 from datetime import datetime
 from typing import Dict, Any
 
 from langchain_openai import ChatOpenAI
+from openai import OpenAI
 from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
 from typing_extensions import TypedDict
 
-from tools.compute import GlobusComputeWrapper
-from tools.globus_interface import get_access_token
+from sim_kernel import run_md_simulation
+import socket
 
 # Sophia LLM API configuration
-SOPHIA_BASE_URL = os.getenv("OPENAI_API_BASE", "https://inference-api.alcf.anl.gov/resource_server/sophia/vllm/v1")
-DEFAULT_MODEL = os.getenv("OPENAI_MODEL", "meta-llama/Meta-Llama-3.1-8B-Instruct")
+DEFAULT_MODEL = os.getenv("OPENAI_MODEL", "meta-llama/Llama-2-7b-chat-hf")
 
 
 class AgentState(TypedDict):
@@ -35,7 +34,6 @@ class AgentState(TypedDict):
    simulation_params: Dict[str, Any]
    simulation_result: Dict[str, Any]
    final_report: str
-   max_simulation_time: int
 
 
 def parse_cli():
@@ -49,9 +47,12 @@ def parse_cli():
    p.add_argument("--model", "-m",
                   default=os.getenv("OPENAI_MODEL", DEFAULT_MODEL),
                   help="LLM model to use")
-   p.add_argument("--endpoint", "-e", 
-                  default=os.getenv("GC_ENDPOINT_ID"),
-                  help="Globus Compute endpoint ID")
+   p.add_argument("--hostname", 
+                  default=socket.gethostname(),
+                  help="Current hostname")
+   p.add_argument("--port", 
+                  default=8000,
+                  help="Current port")
    p.add_argument("--log-level", "-l", default="INFO",
                   choices=["DEBUG", "INFO", "WARNING", "ERROR"],
                   help="Set logging level")
@@ -77,9 +78,6 @@ def config_logging(level):
    compute_logger = logging.getLogger("agentic_demo.compute")
    compute_logger.setLevel(getattr(logging, level))
    
-   auth_logger = logging.getLogger("agentic_demo.auth")
-   auth_logger.setLevel(getattr(logging, level))
-   
    return app_logger
 
 
@@ -87,67 +85,76 @@ def get_logger():
    """Get the application logger"""
    return logging.getLogger("agentic_demo")
 
-
 def llm_analysis_node(state: AgentState) -> AgentState:
    """Node that queries LLM for protein analysis"""
    logger = get_logger()
    logger.info("🧠 Querying LLM for protein analysis...")
-   
+
    try:
-      # Get Globus access token for authentication
-      access_token = get_access_token()
       model = state.get("model", DEFAULT_MODEL)
+
+      url=f"http://localhost:{state.get('port', 8000)}/v1"
+      # Create ChatOpenAI client configured for local inference
+      llm = OpenAI(
+               api_key="EMPTY",
+               base_url=url,
+            )
       
-      # Create ChatOpenAI client configured for Sophia with Globus authentication
-      llm = ChatOpenAI(
-         model=model,
-         openai_api_key=access_token,
-         openai_api_base=SOPHIA_BASE_URL
-      )
-      
+      def wait_for_vllm(llm, timeout_seconds=1000, check_interval=10):
+         start_time = time.time()
+         while time.time() - start_time < timeout_seconds:
+            try:
+               response = llm.chat.completions.create(
+                   model=model,
+                   messages=[{"role": "user", "content": "hello"}],
+                   temperature=0.0,
+                   max_tokens=1024,
+                   stream=False
+               )
+               return True
+            except Exception as e:
+               logger.info(f"vLLM not ready yet. Waiting for {timeout_seconds - (time.time() - start_time):>d} more seconds")
+            time.sleep(check_interval)
+         return False
+
+      wait_for_vllm(llm)
+
       prompt = f"""
-You are an expert in molecular dynamics simulation. Given the protein, {state['protein']}, suggest settings to run OpenMM, the molecular dynamics simulation engine, for this protein. We would like to measure behavior across the range.
-
-Please reply with only JSON, no formatting or extra text.
-
-The JSON should have the following fields:
-1. A single timestep (range from 0.0001 to 0.01)
-2. A single temperature (range from 200 to 500)
-3. A single steps setting (range from 100 to 50000)
-
-Format your response as a JSON object. For example:
-``json
-{{
-   "timestep": 0.002,
-   "temperature": 300,
-   "steps": 10000
-}}
-```
-Be sure to reply with only JSON, no formatting or extra text, no more than one setting for each field. No lists.
+      Analyze the protein {state['protein']} and suggest molecular dynamics simulation parameters.
+      
+      Please provide:
+      1. Brief protein description
+      2. Recommended simulation parameters (timestep, temperature, steps)
+      3. Key stability metrics to monitor
+      
+      Format your response as a structured analysis.
       """
       
       # Query the LLM using LangChain
-      response = llm.invoke(prompt)
+      # response = llm.invoke(prompt)
 
-      logger.debug(f"LLM response: {response}")
+      response = llm.chat.completions.create(
+                model=model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.0,
+                max_tokens=1024,
+                stream=False
+      )
+      
+      response = response.choices[0].message.content
       state["analysis_request"] = prompt
       state["messages"] = add_messages(state.get("messages", []), [response])
-
-      try:
-         simulation_params = json.loads(response.content)
-         state["simulation_params"] = simulation_params
-         logger.debug(f"✅ LLM output parsed: {simulation_params}")
-      except Exception as e:
-         # fallback to default values
-         state["simulation_params"] = {
-            "timestep": 0.002,  # ps
-            "temperature": 300, # K
-            "steps": 10000,
-            "protein": state["protein"]
-         }   
-         logger.warning(f"❌ LLM analysis failed, fall back to test inputs. Parse Error: {e}")
+      
+      # Extract simulation parameters (simplified for demo)
+      state["simulation_params"] = {
+         "timestep": 10,  # ps
+         "temperature": 300,  # K
+         "steps": 10000,
+         "protein": state["protein"]
+      }
       
       logger.info("✅ LLM analysis completed")
+      logger.debug(f"LLM response: {response}")
       return state
       
    except Exception as e:
@@ -167,11 +174,8 @@ def simulation_node(state: AgentState) -> AgentState:
       return state
    
    try:
-      gc_wrapper = GlobusComputeWrapper()
-      timeout = state.get("max_simulation_time", 180)
-      logger.info(f"⏱️  Using simulation timeout: {timeout}s")
-      result = gc_wrapper.submit_simulation(state["simulation_params"], timeout=timeout)
-      
+      result = run_md_simulation(state["simulation_params"])
+
       state["simulation_result"] = result
       logger.info(f"✅ Simulation completed: {result.get('status', 'unknown')}")
       return state
@@ -258,10 +262,6 @@ def main():
    logger.info("🚀 Starting Agentic Workflow Demo")
    logger.info(f"Target protein: {args.protein}")
    logger.info(f"Model: {args.model}")
-   logger.info(f"Endpoint: {args.endpoint or 'Not set - will use default'}")
-   
-   if not args.endpoint:
-      logger.warning("⚠️  GC_ENDPOINT_ID not set - simulation may fail")
    
    # Create initial state
    initial_state = AgentState(
@@ -272,8 +272,8 @@ def main():
       simulation_result={},
       final_report="",
       model=args.model,
-      endpoint=args.endpoint,
-      max_simulation_time=args.max_simulation_time
+      hostname=args.hostname,
+      port=args.port
    )
    
    try:
