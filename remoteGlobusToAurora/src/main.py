@@ -125,11 +125,12 @@ Format your response as a JSON object. For example:
 ```
 Be sure to reply with only JSON, no formatting or extra text, no more than one setting for each field. No lists.
       """
+      logger.debug(f"User prompt: {prompt}")
       
       # Query the LLM using LangChain
       response = llm.invoke(prompt)
 
-      logger.debug(f"LLM response: {response}")
+      logger.debug(f"LLM response: {response.content}")
       state["analysis_request"] = prompt
       state["messages"] = add_messages(state.get("messages", []), [response])
 

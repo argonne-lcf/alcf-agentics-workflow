@@ -180,7 +180,7 @@ def generate_worker_init(args, system=None):
       system = detect_system()
    
    if system == 'polaris':
-      worker_init = """module use /soft/modulefiles
+      worker_init = f"""module use /soft/modulefiles
 module load conda
 source {args.venv_path}/bin/activate
 cd {args.repo_path}
