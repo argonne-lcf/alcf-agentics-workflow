@@ -120,19 +120,28 @@ def llm_analysis_node(state: AgentState) -> AgentState:
       wait_for_vllm(llm)
 
       prompt = f"""
-      Analyze the protein {state['protein']} and suggest molecular dynamics simulation parameters.
-      
-      Please provide:
-      1. Brief protein description
-      2. Recommended simulation parameters (timestep, temperature, steps)
-      3. Key stability metrics to monitor
-      
-      Format your response as a structured analysis.
-      """
-      
-      # Query the LLM using LangChain
-      # response = llm.invoke(prompt)
+You are an expert in molecular dynamics simulation. Given the protein, {state['protein']}, suggest settings to run OpenMM, the molecular dynamics simulation engine, for this protein. We would like to measure behavior across the range.
 
+Please reply with only JSON, no formatting or extra text.
+
+The JSON should have the following fields:
+1. A single timestep (range from 0.0001 to 0.01)
+2. A single temperature (range from 200 to 500)
+3. A single steps setting (range from 100 to 50000)
+
+Format your response as a JSON object. For example:
+``json
+{{
+   "timestep": 0.002,
+   "temperature": 300,
+   "steps": 10000
+}}
+```
+Be sure to reply with only JSON, no formatting or extra text, no more than one setting for each field. No lists.
+      """
+      logger.debug(f"User prompt: {prompt}")
+      
+      # Query the LLM 
       response = llm.chat.completions.create(
                 model=model,
                 messages=[{"role": "user", "content": prompt}],
@@ -142,6 +151,7 @@ def llm_analysis_node(state: AgentState) -> AgentState:
       )
       
       response = response.choices[0].message.content
+      logger.debug(f"LLM response: {response}")
       state["analysis_request"] = prompt
       state["messages"] = add_messages(state.get("messages", []), [response])
       
@@ -154,7 +164,6 @@ def llm_analysis_node(state: AgentState) -> AgentState:
       }
       
       logger.info("✅ LLM analysis completed")
-      logger.debug(f"LLM response: {response}")
       return state
       
    except Exception as e:
