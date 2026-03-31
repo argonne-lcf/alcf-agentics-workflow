@@ -1,6 +1,6 @@
 # Remote Agent Driven Simulation on Aurora
 
-A demonstration of an end-to-end agentic workflow that showcases ALCF infrastructure integration. The workflow, running on Crux, queries a language model on Sophia for protein analysis, then launches GPU-accelerated molecular dynamics simulations on Aurora via Globus Compute.
+A demonstration of an end-to-end agentic workflow that showcases ALCF infrastructure integration. The workflow, running on Crux or your local machine, queries a language model on Sophia for protein analysis, then launches GPU-accelerated molecular dynamics simulations on Aurora via Globus Compute.
 Questions: jchilders@anl.gov
 
 ## ⚡ Quick Start
@@ -8,44 +8,46 @@ Questions: jchilders@anl.gov
 ### Prerequisites
 
 - Python 3.X with virtual environment
-- Access to ALCF systems: Crux, Aurora
+- Access to ALCF systems: Aurora (Crux is optional)
 - Globus authentication set up
 - Aurora endpoint configured
 
 ### Setup Aurora with [Globus Compute Endpoint](https://globus-compute.readthedocs.io/en/latest/endpoints/endpoints.html)
 
 ```bash
-ssh <user_name>@aurora.alcf.anl.gov   # login to Aurora
-git clone <repository-url>            # checkout repo
-cd <repo-path>                        # enter repo (top level)
-module load frameworks                # get python in PATH
-python -m venv venv                   # setup virtual environment
-source venv/bin/activate              # activate virtual environment
-pip install -r requirements.txt       # install dependencies for the demo (at root level)
-pip install globus-compute-endpoint   # install globus compute endpoint
+ssh <user_name>@aurora.alcf.anl.gov                                 # login to Aurora
+git clone https://github.com/argonne-lcf/alcf-agentics-workflow.git # checkout repo
+cd alcf-agentics-workflow/remoteGlobusToAurora                      # enter repo (top level)
+module load frameworks                                              # get python in PATH
+python -m venv venv                                                 # setup virtual environment
+source venv/bin/activate                                            # activate virtual environment
+pip install -r requirements.txt                                     # install dependencies for the demo (at root level)
+pip install globus-compute-endpoint                                 # install globus compute endpoint
 
 # next we need to generate the endpoint configuration file for Globus Compute
-python remoteGlobusToAurora/scripts/gen_endpoint_config.py --repo-path $PWD --venv-path $PWD/venv -o my-endpoint-config.yaml
+python scripts/gen_endpoint_config.py --repo-path $PWD --venv-path $PWD/venv -o my-endpoint-config.yaml
 
-# create endpoint 
-# only run this once, can see if endpoint is already created with "globus-compute-endpoint list"
-# if endpoint already present, skip to next step
+# create a globus compute endpoint (skip if one is already present)
+# (see below for troubleshooting this step)
 globus-compute-endpoint configure --endpoint-config my-endpoint-config.yaml my-aurora-endpoint
 
-# start endpoint
+# start globus endpoint (may ask to authenticate with Globus)
 globus-compute-endpoint start my-aurora-endpoint
 # when you run this, it would print to screen the endpoint id:
 #   > Starting endpoint; registered ID: <UUID>
 # That <UUID> is the endpoint id. We will need this for the next step.
 
-# verify endpoint is running
+# verify endpoint is running (ensure status is Initialized, not Disconnected)
 globus-compute-endpoint list
 ```
 
 Now Aurora is ready to run the workflow.
 
-> [!NOTE]
-> For Globus Compute to work properly, the same MAJOR.MINOR version of python must be used on the endpoint as the one used to create the virtual environment. Currently the Aurora Framework module loads python 3.10.
+> [!WARNING]
+> - For Globus Compute to work properly, the same MAJOR.MINOR version of python must be used on the endpoint as the one used to create the virtual environment. Currently the Aurora Framework module loads python 3.12.12.
+> - Only run the `globus-compute-endpoint start` command once. You can see if an endpoint was already created with `globus-compute-endpoint list`. 
+> - If you want to delete existing Globus endpoint, run `globus-compute-endpoint stop <endpoint_name>` and `rm -r ~/.globus_compute/<endpoint_name>`. Now you can create a new one with `globus-compute-endpoint start <endpoint_name>`.
+> - When starting the Globus Compute Enpoint, it may ask for authentication. Copy-paste the printed link to a browser and use ALCF credential to authenticate. Then paste the provided Authorization Code in the terminal.
 
 
 ### Setup Crux with [Globus Compute Endpoint](https://globus-compute.readthedocs.io/en/latest/endpoints/endpoints.html)

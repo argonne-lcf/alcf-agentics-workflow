@@ -1,0 +1,26 @@
+engine:
+  available_accelerators: 12
+  max_retries_on_system_failure: 2
+  max_workers_per_node: 12
+  prefetch_capacity: 24
+  provider:
+    account: datascience
+    cpus_per_node: 64
+    init_blocks: 0
+    launcher:
+      bind_cmd: --cpu-bind
+      overrides: --ppn 1
+      type: MpiExecLauncher
+    max_blocks: 1
+    min_blocks: 0
+    nodes_per_block: 1
+    queue: debug
+    scheduler_options: '#PBS -l filesystems=home:flare'
+    select_options: ngpus=1
+    type: PBSProProvider
+    walltime: 01:00:00
+    worker_init: |-
+      cd /home/balin/user_docs/agentic_workflows/alcf-agentics-workflow/remoteGlobusToAurora
+      source /home/balin/user_docs/agentic_workflows/alcf-agentics-workflow/remoteGlobusToAurora/venv/bin/activate
+      export PYTHONPATH=/home/balin/user_docs/agentic_workflows/alcf-agentics-workflow/remoteGlobusToAurora/remoteGlobusToAurora/src:$PYTHONPATH
+  type: GlobusComputeEngine
