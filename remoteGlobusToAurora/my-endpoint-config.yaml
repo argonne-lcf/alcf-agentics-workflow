@@ -22,5 +22,5 @@ engine:
     worker_init: |-
       cd /home/balin/user_docs/agentic_workflows/alcf-agentics-workflow/remoteGlobusToAurora
       source /home/balin/user_docs/agentic_workflows/alcf-agentics-workflow/remoteGlobusToAurora/venv/bin/activate
-      export PYTHONPATH=/home/balin/user_docs/agentic_workflows/alcf-agentics-workflow/remoteGlobusToAurora/remoteGlobusToAurora/src:$PYTHONPATH
+      export PYTHONPATH=/home/balin/user_docs/agentic_workflows/alcf-agentics-workflow/remoteGlobusToAurora/src:$PYTHONPATH
   type: GlobusComputeEngine
