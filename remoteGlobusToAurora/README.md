@@ -17,34 +17,33 @@ Questions: jchilders@anl.gov
 ```bash
 ssh <user_name>@aurora.alcf.anl.gov                                 # login to Aurora
 git clone https://github.com/argonne-lcf/alcf-agentics-workflow.git # checkout repo
-cd alcf-agentics-workflow/remoteGlobusToAurora                      # enter repo (top level)
+cd alcf-agentics-workflow/remoteGlobusToAurora                      # enter example dir
 module load frameworks                                              # get python in PATH
 python -m venv venv                                                 # setup virtual environment
 source venv/bin/activate                                            # activate virtual environment
-pip install -r requirements.txt                                     # install dependencies for the demo (at root level)
-pip install globus-compute-endpoint                                 # install globus compute endpoint
+pip install -r requirements.txt                                     # install dependencies for the demo
+pip install globus-compute-endpoint==3.15.0                         # install globus compute endpoint
 
 # next we need to generate the endpoint configuration file for Globus Compute
-python scripts/gen_endpoint_config.py --repo-path $PWD --venv-path $PWD/venv -o my-endpoint-config.yaml
+python scripts/gen_endpoint_config.py --repo-path $PWD --venv-path $PWD/venv -o my-endpoint-config.yaml --account <project_name> --queue <queue_name>
 
 # create a globus compute endpoint (skip if one is already present)
 # (see below for troubleshooting this step)
 globus-compute-endpoint configure --endpoint-config my-endpoint-config.yaml my-aurora-endpoint
 
 # start globus endpoint (may ask to authenticate with Globus)
-globus-compute-endpoint start my-aurora-endpoint
-# when you run this, it would print to screen the endpoint id:
-#   > Starting endpoint; registered ID: <UUID>
-# That <UUID> is the endpoint id. We will need this for the next step.
+globus-compute-endpoint start my-aurora-endpoint --detach
 
 # verify endpoint is running (ensure status is Initialized, not Disconnected)
+# and get the Endpoint ID (this is needed for the setup on Crux/local)
 globus-compute-endpoint list
 ```
 
 Now Aurora is ready to run the workflow.
 
 > [!WARNING]
-> - For Globus Compute to work properly, the same MAJOR.MINOR version of python must be used on the endpoint as the one used to create the virtual environment. Currently the Aurora Framework module loads python 3.12.12.
+> - For Globus Compute to work properly, the same MAJOR.MINOR version of python must be used on the endpoint as the one used to create the virtual environment. Currently the Aurora Framework module loads Python 3.12.12.
+> - When configuring the Globus Compute Endpoint, you can use the `--account <project_name> --queue <queue_name>` options to specify your project name and the queue you wish to submit to (the debug queue is fine for this example)
 > - Only run the `globus-compute-endpoint start` command once. You can see if an endpoint was already created with `globus-compute-endpoint list`. 
 > - If you want to delete existing Globus endpoint, run `globus-compute-endpoint stop <endpoint_name>` and `rm -r ~/.globus_compute/<endpoint_name>`. Now you can create a new one with `globus-compute-endpoint start <endpoint_name>`.
 > - When starting the Globus Compute Enpoint, it may ask for authentication. Copy-paste the printed link to a browser and use ALCF credential to authenticate. Then paste the provided Authorization Code in the terminal.
@@ -54,27 +53,16 @@ Now Aurora is ready to run the workflow.
 
 
 ```bash
+ssh <user_name>@crux.alcf.anl.gov                                   # login to Crux
+git clone https://github.com/argonne-lcf/alcf-agentics-workflow.git # checkout repo
+cd alcf-agentics-workflow/remoteGlobusToAurora                      # enter example dir
+module use /soft/modulefiles/                                       # get python and conda
+module load conda
+conda activate
+conda create -y -p $PWD/env python==3.12.12                         # create new conda env matching Aurora python version 
+conda activate $PWD/env                                             # activate conda env
+pip install -r requirements.txt                                     # install dependencies for the demo
 
-ssh <user_name>@crux.alcf.anl.gov
-
-# if you need python
-module use /soft/modulefiles/
-module load spack-pe-base
-module load python
-
-# Clone and set up environment
-git clone <repository-url>       # checkout repo
-cd <repo-path>                   # enter repo (top level)
-python -m venv venv
-source venv/bin/activate
-
-# Install dependencies
-pip install -r ../requirements.txt  # install dependencies (requirements.txt is at project root)
-```
-
-### Configuration on Crux Login Nodes
-
-```bash
 # Set required environment variables
 export GC_ENDPOINT_ID="<UUID>" # from the previous step
 export OPENAI_MODEL="meta-llama/Meta-Llama-3.1-8B-Instruct"  # Optional: defaults to this
@@ -83,26 +71,26 @@ export OPENAI_MODEL="meta-llama/Meta-Llama-3.1-8B-Instruct"  # Optional: default
 export http_proxy="http://proxy.alcf.anl.gov:3128"
 export https_proxy="http://proxy.alcf.anl.gov:3128"
 
-# Authenticate with Globus
-python remoteGlobusToAurora/src/tools/globus_interface.py authenticate
-# This will print a URL to the screen. Open this URL in a browser and login with your ALCF credentials.
-# The web page will show a code. Copy this code and paste it into the terminal.
-# Debugging notes:
-#  - it may be necessary to force re-authentication, in which case add --force to the command above
+# Authenticate with Globus (see below for debugging notes)
+python src/tools/globus_interface.py authenticate
 
-# Verify setup (note it will ask for another authentication)
-python remoteGlobusToAurora/scripts/globus_check.py
+# Verify setup
+python scripts/globus_check.py
 ```
 
-> **Aurora Endpoint Setup**: The repository must also be available on Aurora with dependencies installed. Follow the Aurora setup instructions above for complete endpoint configuration.
+> [!WARNING]
+> - For Globus Compute to work properly, the same MAJOR.MINOR version of python must be used on the endpoint as the one used to create the virtual environment. Currently the Aurora Framework module loads Python 3.12.12, so the conda environment on Crux is created with Python 3.12.12.
+> - When authenticating with Globus, you should expect to see a link asking for authentication with ALCF credentials. If this is not happening, it may be necessary to force re-authentication by running `python src/tools/globus_interface.py authenticate --force`
+> - When running `globus_check.py` and checking that the endpoint is reachable, you should expaect to have to authenticate again. If this is not happening, try deleting all cached files with `rm -r ~/.globus_compute` and running the check again.
+
 
 ### Run Demo
 
-From the login nodes on Crux
+From the login nodes on Crux, run
 
 ```bash
 # Basic run with p53 protein
-python remoteGlobusToAurora/src/main.py --protein p53
+python src/main.py --protein p53
 ```
 
 This will run the workflow and print the results to the screen.
@@ -148,12 +136,15 @@ The protein p53 simulation has been completed successfully on Aurora.
 ============================================================
 ```
 
-
+To run with a custom protein and verbose logging, execute
 
 ```bash
 # Custom protein and verbose logging
-python remoteGlobusToAurora/src/main.py --protein insulin --log-level DEBUG
+python src/main.py --protein insulin --log-level DEBUG
+```
 
+The full set of options are:
+```bash
 # Full options
 python remoteGlobusToAurora/src/main.py \
    --protein myoglobin \
@@ -268,25 +259,25 @@ Test OpenMM functionality and GPU acceleration on Aurora:
 
 ```bash
 # Quick test using the shell script (recommended)
-./remoteGlobusToAurora/scripts/run_openmm_test.sh
+./scripts/run_openmm_test.sh
 
 # Test with specific parameters
-./remoteGlobusToAurora/scripts/run_openmm_test.sh OpenCL 2000
+./scripts/run_openmm_test.sh OpenCL 2000
 
 # Direct Python execution with platform detection
-python remoteGlobusToAurora/tests/test_openmm_aurora.py --platform auto
+python tests/test_openmm_aurora.py --platform auto
 
 # Test specific platform
-python remoteGlobusToAurora/tests/test_openmm_aurora.py --platform OpenCL --steps 1000
+python tests/test_openmm_aurora.py --platform OpenCL --steps 1000
 
 # Performance benchmarking
-python remoteGlobusToAurora/tests/test_openmm_aurora.py --benchmark --particles 5000
+python tests/test_openmm_aurora.py --benchmark --particles 5000
 
 # Debug GPU detection
-python remoteGlobusToAurora/tests/test_openmm_aurora.py --log-level DEBUG
+python tests/test_openmm_aurora.py --log-level DEBUG
 
 # Run OpenMM tests via pytest
-python -m pytest remoteGlobusToAurora/tests/test_openmm_aurora.py -v
+python -m pytest tests/test_openmm_aurora.py -v
 ```
 
 ### Expected Test Results
@@ -306,11 +297,11 @@ Performance: ~8000+ steps/second
 Performance: ~1000-3000 steps/second
 ```
 
-See `remoteGlobusToAurora/tests/README_openmm_test.md` for detailed testing documentation.
+See `tests/README_openmm_test.md` for detailed testing documentation.
 
 ## 📦 Dependencies
 
-The project uses the following key dependencies (see `requirements.txt` at project root):
+The project uses the following key dependencies (see `requirements.txt`):
 
 **Core Workflow:**
 - `langgraph>=0.1.0` - State machine orchestration

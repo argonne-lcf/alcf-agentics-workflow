@@ -9,6 +9,7 @@ import time
 from typing import Dict, Any, Optional
 
 from globus_compute_sdk import Client, Executor
+from globus_compute_sdk.serialize import AllCodeStrategies, ComputeSerializer
 
 
 def get_logger():
@@ -31,6 +32,8 @@ class GlobusComputeWrapper:
       
       self.client = Client()
       self.executor = Executor(endpoint_id=self.endpoint_id)
+      # Serialize submitted callables by value so endpoint does not need local modules.
+      self.executor.serializer = ComputeSerializer(strategy_code=AllCodeStrategies())
       
    def submit_simulation(self, params: Dict[str, Any], timeout: int = 180) -> Dict[str, Any]:
       """Submit a molecular dynamics simulation job
