@@ -206,11 +206,13 @@ and ensure Aurora is accessible.
       stability_score = sim_result.get("stability_score", "N/A")
       rmsd = sim_result.get("rmsd", "N/A")
       energy = sim_result.get("final_energy", "N/A")
+      platform = sim_result.get("platform_used", "unknown")
+      status_label = "COMPLETED" if platform != "dummy" else "COMPLETED (with dummy simulation)"
       
       report = f"""
 ## Molecular Dynamics Analysis Report - {protein}
 
-**Status**: ✅ COMPLETED
+**Status**: ✅ {status_label}
 **Timestamp**: {datetime.now().strftime('%d-%m %H:%M')}
 
 ### Simulation Parameters

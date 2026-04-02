@@ -93,7 +93,7 @@ From the login nodes on Crux, run
 python src/main.py --protein p53
 ```
 
-This will run the workflow and print the results to the screen.
+This will run the workflow and print the results to the screen. You can check that the simulation job is being submitted, queued and run on Aurora by running `qstat -u <user_name>` on an Aurora login node (the job name will be `parsl.GlobusComputeEngine-HighThroughputExecutor...`). 
 
 **Expected output:**
 ```bash
