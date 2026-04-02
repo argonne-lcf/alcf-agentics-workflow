@@ -45,7 +45,7 @@ The **remoteGlobusToAurora** workflow demonstrates a sophisticated integration o
 ### Essential Requirements
 
 1. **ALCF Account Access**:
-   - Active account at ALCF: for using Crux, Aurora, Polaris, and Sophia systems
+   - Active account at ALCF: for using Crux, Aurora, Polaris,and Sophia systems
    - Valid Globus identity linked to your ALCF credentials
 
 2. **Python Environment**:
@@ -60,7 +60,7 @@ The **remoteGlobusToAurora** workflow demonstrates a sophisticated integration o
 ### System-Specific Requirements
 
 #### Client (Orchestration)
-- Login node access, laptop or other system
+- Login node access
 - Proxy configuration for external API calls
 - Python virtual environment capability
 
@@ -157,7 +157,7 @@ conda activate
 ```bash
 # Clone the repository
 git clone https://github.com/argonne-lcf/alcf-agentics-workflow.git
-cd alcf-agentics-workflow/remoteGlobusToAurora
+cd alcf-agentics-workflow
 
 # Create virtual environment
 python -m venv venv
@@ -166,14 +166,14 @@ source venv/bin/activate
 # Install dependencies
 pip install -r requirements.txt
 pip install globus-compute-endpoint
-python --version # 3.12.12 on Aurora as of 4/02/2026
+python --version # 3.11.X on Polaris as of 9/22/2025
 ```
 
 #### 1.3 Generate Endpoint Configuration
 
 ```bash
 # Generate optimized Aurora or Polaris configuration
-python scripts/gen_endpoint_config.py \
+python remoteGlobusToAurora/scripts/gen_endpoint_config.py \
   --repo-path $PWD \
   --venv-path $PWD/venv \
   -o my-endpoint-config.yaml \
@@ -196,10 +196,10 @@ python scripts/gen_endpoint_config.py \
 
 ```bash
 # Create endpoint (one-time setup)
-globus-compute-endpoint configure --template-config my-endpoint-config.yaml my-globus-endpoint
+globus-compute-endpoint configure --endpoint-config my-endpoint-config.yaml my-globus-endpoint
 
 # Start the endpoint
-globus-compute-endpoint start my-globus-endpoint --detach
+globus-compute-endpoint start my-globus-endpoint
 
 # Check endpoints running (helpful in the future to check if endpoint is running)
 globus-compute-endpoint list
@@ -207,11 +207,7 @@ globus-compute-endpoint list
 
 **Expected Output**:
 ```
-+--------------------------------------+---------+--------------------+
-|             Endpoint ID              | Status  |   Endpoint Name    |
-+======================================+=========+====================+
-| 296d3740-b088-4b99-bcc5-2135cef14c34 | Running | my-globus-endpoint |
-+--------------------------------------+---------+--------------------+
+Starting endpoint; registered ID: <UUID>
 ```
 
 > **Save the Endpoint ID**: You'll need this UUID for Crux configuration.
@@ -225,7 +221,7 @@ cd /path/to/alcf_agentics_workflow
 source venv/bin/activate
 
 # Test OpenMM functionality
-python tests/test_openmm_aurora.py --platform auto
+python remoteGlobusToAurora/tests/test_openmm_aurora.py --platform auto
 ```
 
 ### Phase 2: Agent Orchestration Setup
@@ -253,16 +249,24 @@ On a Crux login node:
 # Login to Crux
 ssh <username>@crux.alcf.anl.gov
 
+# Load Aurora compatible Python from modules
+module use /soft/modulefiles/
+module load spack-pe-base
+module load python
+
+# Install proper Python version from Miniconda for Polaris compatible Python
+wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+bash Miniconda3-latest-Linux-x86_64.sh -b -p $HOME/miniconda3
+source $HOME/miniconda3/bin/activate
+conda install python==3.11.12
+
 # Clone the repository
 git clone https://github.com/argonne-lcf/alcf-agentics-workflow.git
-cd alcf-agentics-workflow/remoteGlobusToAurora
+cd alcf-agentics-workflow
 
-# Create conda env with Python version compatible with Aurora
-module use /soft/modulefiles/
-module load conda
-conda activate
-conda create -y -p $PWD/env python==3.12.12
-conda activate $PWD/env   
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
@@ -286,7 +290,7 @@ export https_proxy=http://proxy.alcf.anl.gov:3128
 
 ```bash
 # Authenticate with Globus
-python src/tools/globus_interface.py authenticate
+python remoteGlobusToAurora/src/tools/globus_interface.py authenticate
 
 # Follow the authentication flow:
 # 1. Open the provided URL in a browser
@@ -305,7 +309,7 @@ python src/tools/globus_interface.py authenticate
 ```bash
 # Comprehensive environment check
 # it may ask to authenticate again, similar to step above
-python scripts/globus_check.py
+python remoteGlobusToAurora/scripts/globus_check.py
 
 # Expected output:
 # ✅ Python Environment
@@ -317,15 +321,13 @@ python scripts/globus_check.py
 
 ### Basic Execution
 
-From your laptop or a Crux login node, execute
-
 ```bash
 # Navigate to project directory
-cd alcf-agentics-workflow/remoteGlobusToAurora
-conda activate $PWD/env 
+cd <repository-path>
+source venv/bin/activate
 
 # Run with default protein (p53)
-python src/main.py --protein p53
+python remoteGlobusToAurora/src/main.py --protein p53
 ```
 
 ### Understanding the Output
@@ -352,18 +354,18 @@ python src/main.py --protein p53
 
 ```bash
 # Custom protein with verbose logging
-python src/main.py \
+python remoteGlobusToAurora/src/main.py \
   --protein insulin \
   --log-level DEBUG
 
 # Different model and longer timeout
-python src/main.py \
+python remoteGlobusToAurora/src/main.py \
   --protein myoglobin \
   --model meta-llama/Meta-Llama-3.1-70B-Instruct \
   --max-simulation-time 300
 
 # Using custom endpoint
-python src/main.py \
+python remoteGlobusToAurora/src/main.py \
   --protein lysozyme \
   --endpoint custom-endpoint-uuid
 ```

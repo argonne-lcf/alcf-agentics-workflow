@@ -1,5 +1,7 @@
-.cursor
-venv
+# Globus Compute files
+my-endpoint-config.yaml
+parsl.GlobusComputeEngine*
+cmd_parsl.*
 
 # Python
 __pycache__/
@@ -36,6 +38,7 @@ htmlcov/
 .env.local
 
 # IDE
+.cursor
 .vscode/
 .idea/
 *.swp
@@ -52,3 +55,7 @@ htmlcov/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Conda env and Python venvs
+venv/
+env/

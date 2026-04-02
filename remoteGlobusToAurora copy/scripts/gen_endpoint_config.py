@@ -191,8 +191,7 @@ export TMPDIR=/tmp"""
       worker_init = f"""cd {args.repo_path}
 module load frameworks
 source {args.venv_path}/bin/activate
-export PYTHONPATH={args.repo_path}/src:$PYTHONPATH
-export TMPDIR=/tmp"""
+export PYTHONPATH={args.repo_path}/src:$PYTHONPATH"""
    else:
       # System not detected
       logging.error("Could not detect Aurora or Polaris system from hostname")

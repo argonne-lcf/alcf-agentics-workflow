@@ -14,17 +14,17 @@ cd /path/to/alcf_agentics_workflow
 source ./venv/bin/activate
 
 # Run the test script
-./scripts/run_openmm_test.sh
+./remoteGlobusToAurora/scripts/run_openmm_test.sh
 
 # Or run with specific platform
-./scripts/run_openmm_test.sh OpenCL 2000
+./remoteGlobusToAurora/scripts/run_openmm_test.sh OpenCL 2000
 ```
 
 ### Direct Python execution:
 
 ```bash
 # Navigate to tests directory
-cd tests
+cd remoteGlobusToAurora/tests
 
 # Run with auto platform detection (recommended)
 python test_openmm_aurora.py
@@ -39,7 +39,7 @@ python test_openmm_aurora.py --log-level DEBUG
 ### Using pytest:
 
 ```bash
-cd tests
+cd remoteGlobusToAurora/tests
 pytest test_openmm_aurora.py -v
 ```
 
