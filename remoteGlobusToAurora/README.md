@@ -83,10 +83,36 @@ python scripts/globus_check.py
 > - When authenticating with Globus, you should expect to see a link asking for authentication with ALCF credentials. If this is not happening, it may be necessary to force re-authentication by running `python src/tools/globus_interface.py authenticate --force`
 > - When running `globus_check.py` and checking that the endpoint is reachable, you should expaect to have to authenticate again. If this is not happening, try deleting all cached files with `rm -r ~/.globus_compute` and running the check again.
 
+### Setup your laptop/local system with [Globus Compute Endpoint](https://globus-compute.readthedocs.io/en/latest/endpoints/endpoints.html)
+
+Similar instructions apply to set up your laptop or local system to run the workflow. The instructions below use `conda` to create a new environment matching the Python version currently on Aurora, however, users should adapt these instructions to match their preferred way of setting up a Python environment.
+
+```bash
+git clone https://github.com/argonne-lcf/alcf-agentics-workflow.git # checkout repo
+cd alcf-agentics-workflow/remoteGlobusToAurora                      # enter example dir
+conda create -y -p $PWD/env python==3.12.12                         # create new conda env matching Aurora python version 
+conda activate $PWD/env                                             # activate conda env
+pip install -r requirements.txt                                     # install dependencies for the demo
+
+# Set required environment variables
+export GC_ENDPOINT_ID="<UUID>" # from the previous step
+export OPENAI_MODEL="meta-llama/Meta-Llama-3.1-8B-Instruct"  # Optional: defaults to this
+
+# make sure you have outbound connection, but in most cases nothing is needed
+
+# Authenticate with Globus (see below for debugging notes)
+python src/tools/globus_interface.py authenticate
+
+# Verify setup
+python scripts/globus_check.py
+```
+
+See the notes under the Crux instructions for debugging tips.
+
 
 ### Run Demo
 
-From the login nodes on Crux, run
+From the login nodes on Crux or on your local system, run
 
 ```bash
 # Basic run with p53 protein
