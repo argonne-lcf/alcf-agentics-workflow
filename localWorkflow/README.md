@@ -10,66 +10,96 @@ Questions: rbalin@anl.gov, htummalapalli@anl.gov
 
 - Python 3.X with virtual environment
 - Access to ALCF systems: Aurora or Polaris
+- HuggingFace account and user access token
+
+> [!WARNING]
+> - A personal HuggingFace account and user access token will be needed in order to serve the LLMs locally on the systems. Please [create an account](https://huggingface.co/join) on HuggingFace and follow [instructions](https://huggingface.co/docs/hub/en/security-tokens) to create a token. A read-only token is sufficient. Additionally, to access the Meta Llama 3.1 8B model being used for this example, please [request access to the model](https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct) (this should only take a few minutes and you can check the status of your request clicking on your profile settings and Gated Repositories). 
+> - To download the LLama 3.1 8B model, execute the following on Aurora or Polaris. 
+```bash
+# Load frameworks/conda module (e.g., module load frameworks)
+# Authenticate with HF (this will require your HuggingFace token)
+hf auth login
+
+# Download the model weights
+export HF_HOME=/path/to/.cache
+hf download meta-llama/Llama-3.1-8B-Instruct
+```
+
+### Setup on Aurora
+
+To run the example on Aurora, execute the following steps to set up the necessary environment.
+
+```bash
+ssh <user_name>@aurora.alcf.anl.gov                                 # login to Aurora
+git clone https://github.com/argonne-lcf/alcf-agentics-workflow.git # clone repo
+cd alcf-agentics-workflow/localWorkflow                             # enter example dir
+module load frameworks                                              # access Python and AI frameworks on Aurora
+python -m venv venv                                                 # setup virtual environment
+source venv/bin/activate                                            # activate virtual environment
+pip install -r requirements.txt                                     # install dependencies for the demo
+```
+
+The workflow is now ready to run on Aurora.
 
 ### Setup on Polaris 
 
-To run the example on Polaris, execute the following to set up the necessary environment.
+To run the example on Polaris, execute the following steps to set up the necessary environment.
 
 ```bash
-ssh <user_name>@polaris.alcf.anl.gov   # login to Polaris
-git clone <repository-url>             # checkout repo
-cd <repo-path>                         # enter repo (top level)
-module use /soft/modulefiles           # access modules on Polaris
-module load conda                      # load datascience module
-conda activate                         # activate default conda env (get Python)
-python -m venv venv                    # setup virtual environment
-source venv/bin/activate               # activate virtual environment
-pip install -r requirements.txt        # install dependencies for the demo (at root level)
-pip install vllm                       # install vllm and its dependencies (needed to locally serve LLM)
+ssh <user_name>@polaris.alcf.anl.gov                                # login to Polaris
+git clone https://github.com/argonne-lcf/alcf-agentics-workflow.git # clone repo
+cd alcf-agentics-workflow/localWorkflow                             # enter example dir
+module use /soft/modulefiles                                        # access modules on Polaris
+module load conda                                                   # load datascience module
+conda activate                                                      # activate default conda env (get Python)
+python -m venv venv                                                 # setup virtual environment
+source venv/bin/activate                                            # activate virtual environment
+pip install -r requirements.txt                                     # install dependencies for the demo
+pip install vllm                                                    # install vllm and its dependencies (needed to locally serve LLM)
 ```
 
-Now Polaris is ready to run the workflow.
-
-### Setup on Aurora 
-
-Instructions for Aurora will be provided soon as the system is currently under maintenance.
-
-
-> [!NOTE]
-> A personal HuggingFace account and user access token will be needed in order to serve the LLMs locally on the systems. Please [create an account](https://huggingface.co/join) on HuggingFace and follow [instructions](https://huggingface.co/docs/hub/en/security-tokens) to create a token. A read-only token is sufficient. Additionally, to access the Meta Llama 2 model being used for this example, please [request access to the model](https://huggingface.co/meta-llama/Llama-2-7b-chat-hf) (this should only take a few minutes and you can check the status of your request clicking on your profile settings and Gated Repositories). 
+The workflow is now ready to run on Aurora.
 
 
 ### Run Demo
 
-To run the demo, first obtain a compute node on either Polaris or Aurora
+To run the demo, first obtain an interactive session on a compute node on either Polaris or Aurora
 
 ```bash
-# On Polaris
-qsub -I -l select=1,walltime=01:00:00,filesystems=home:eagle -q debug -A <your_project_name>
-
 # On Aurora
 qsub -I -l select=1,walltime=01:00:00,filesystems=home:flare -q debug -A <your_project_name>
+
+# On Polaris
+qsub -I -l select=1,walltime=01:00:00,filesystems=home:eagle -q debug -A <your_project_name>
 ```
 
-Then source the environment created above in the setup phase and export key environment variables
+and navigate to the example directory.
+
+Then source the environment created above and export key environment variables
 
 ```bash
+# On Aurora
+module load frameworks
+source venv/bin/activate
+
 # On Polaris
+cd alcf-agentics-workflow/localWorkflow 
 module use /soft/modulefiles
 module load conda
 source venv/bin/activate
 
-export HF_HOME="/path/to/model/weights"
-export HF_DATASETS_CACHE="/path/to/model/weights"
+# On either system
+export HF_HOME="/path/to/.cache"
+export HF_DATASETS_CACHE="/path/to/.cache"
 export HF_TOKEN="your_HuggingFace_token"
-export MODEL="meta-llama/Llama-2-7b-chat-hf"
+export MODEL="meta-llama/Meta-Llama-3.1-8B-Instruct"
 export TMPDIR="/tmp"
 ```
 
 With the correct environment, start the vLLM server on the node
 
 ```bash
-source ./localWorkflow/scripts/vllm_setup.sh
+source ./scripts/vllm_setup.sh
 
 # you can tail the log file to see the output of vLLM server startup with
 # tail -f vllm_server.log
@@ -80,26 +110,20 @@ source ./localWorkflow/scripts/vllm_setup.sh
 Before running the workflow, you can check that the vLLM server is running as expected by running a simple test
 
 ```bash
-python localWorkflow/tests/test_vllm_server.py
-
-# Expected output:
-# System: You are a helpful assistant.
-# User: Tell me a joke.
-# Assistant:   Of course! Here's a quick joke for you:
-#
-# Why don't scientists trust atoms?
-# Because they make up everything!
-#
-# I hope that brought a smile to your face! Is there anything else I can help you with?
+python tests/test_vllm_server.py
 ```
 
-> [!NOTE]
-> The environment variables for the proxies need to be unset for the OpenAI client to connect to the vLLM server. See the `./localWorkflow/scripts/vllm_setup.sh` script for details.
+**Expected output:**
+```bash
+System: You are a helpful assistant.
+User: Introduce yourself.
+Assistant: I'm an artificial intelligence model ...
+```
 
 Now, you can run the agentic workflow with
 
 ```bash
-python localWorkflow/src/main.py --protein p53
+python src/main.py --protein p53
 ```
 
 This will run the workflow and print the results to the screen.
@@ -149,10 +173,10 @@ Additional options for running the workflow are:
 
 ```bash
 # Custom protein and verbose logging
-python localWorkflow/src/main.py --protein insulin --log-level DEBUG
+python /src/main.py --protein insulin --log-level DEBUG
 
 # Full options
-python localWorkflow/src/main.py \
+python src/main.py \
    --protein myoglobin \
    --model gpt-4 \
    --endpoint custom-endpoint-id \
@@ -160,18 +184,28 @@ python localWorkflow/src/main.py \
    --max-simulation-time 120
 ```
 
+Once you are done running the workflow, you can teardown the vllm server with
+
+```bash
+./scripts/vllm_teardown.sh
+```
+
 ## 📁 Project Structure
 
 ```
-localWorkflow/
-├── src/
-│   ├── main.py              # CLI orchestrator with LangGraph
-│   ├── sim_kernel.py        # OpenMM simulation for Aurora
-├── scripts/
-│   ├── vllm_setup.sh        # Setup vLLM server
-├── tests/
-│   ├── test_vllm_server.py  # Test for vLLM server
-└── README.md                # This file
+localWorkflow
+├── README.md
+├── requirements.txt
+├── scripts
+│   ├── run_openmm_test.sh
+│   ├── vllm_setup.sh
+│   └── vllm_teardown.sh
+├── src
+│   ├── main.py
+│   └── sim_kernel.py
+└── tests
+    ├── test_openmm_aurora.py
+    └── test_vllm_server.py
 ```
 
 ## 🔧 Components
@@ -181,7 +215,7 @@ localWorkflow/
 - **Features**: CLI interface with argparse, structured logging, error handling, timeout management
 - **Workflow**: LLM analysis → GPU simulation → Report generation
 - **Model**: Configured for meta-llama/Llama-2-7b-chat-hf by default
-- **Usage**: `python localWorkflow/src/main.py --protein p53 --log-level INFO`
+- **Usage**: `python src/main.py --protein p53 --log-level INFO`
 
 ### Simulation Kernel (`src/sim_kernel.py`)
 - **Purpose**: Runs molecular dynamics simulations on Aurora Intel GPUs
@@ -191,11 +225,22 @@ localWorkflow/
 
 ### vLLM Server Startup Script (`scripts/vllm_setup.sh`)
 - **Purpose**: Setup of vLLM server on the compute node
-- **Usage**: `source localWorkflow/scripts/vllm_setup.sh`
+- **Usage**: `source scripts/vllm_setup.sh`
 
-### OpenMM Test Suite (`tests/test_vllm_server.py`)
-- **Purpose**: Validates functionality of the local vLLM server
-- **Usage**: `python localWorkflow/tests/test_vllm_server.py`
+### vLLM Server Teardown Script (`scripts/vllm_teardown.sh`)
+- **Purpose**: Tear dowm of vLLM server on the compute node
+- **Usage**: `./scripts/vllm_teardown.sh`
+
+### vLLM Server Test Script(`tests/test_vllm_server.py`)
+- **Purpose**: Validates reachability and functionality of the local vLLM server
+- **Usage**: `python tests/test_vllm_server.py`
+
+### OpenMM Test Suite (`tests/test_openmm_aurora.py`)
+- **Purpose**: Validates OpenMM functionality and GPU acceleration on Aurora
+- **Features**: Platform detection, performance benchmarking, Intel GPU verification
+- **Platforms**: Automatic detection, OpenCL/CPU comparison, device enumeration
+- **Usage**: `python tests/test_openmm_aurora.py --platform auto --steps 1000`
+- **Script**: `./scripts/run_openmm_test.sh [platform] [steps]`
 
 ## 📊 Simulation Details
 
@@ -211,32 +256,60 @@ The demo runs simplified molecular dynamics simulations with the following chara
 
 ## 🧪 Testing
 
-The project includes testing for functionality of the vLLM server.
+The project includes testing for functionality of the vLLM server and the OpenMM simulation
 
 ### vLLM server tests
 
 ```bash
 # Test that the vLLM server can serve a simple request
-python localWorkflow/tests/test_vllm_server.py
+python tests/test_vllm_server.py
 ```
-
-### Expected Test Results
-
 **Successful vLLM serving:**
 ```
 System: You are a helpful assistant.
-User: Tell me a joke.
-Assistant:   Of course! Here's a quick joke for you:
+User: Introduce yourself.
+Assistant: I'm an artificial intelligence model ...
+```
 
-Why don't scientists trust atoms?
-Because they make up everything!
+### OpenMM simulation tests
 
-I hope that brought a smile to your face! Is there anything else I can help you with?
+Test OpenMM functionality and GPU acceleration:
+
+```bash
+# Quick test using the shell script (recommended)
+./scripts/run_openmm_test.sh
+
+# Test with specific parameters
+./scripts/run_openmm_test.sh OpenCL 2000
+
+# Direct Python execution with platform detection
+python tests/test_openmm_aurora.py --platform auto
+
+# Test specific platform
+python tests/test_openmm_aurora.py --platform OpenCL --steps 1000
+
+# Performance benchmarking
+python tests/test_openmm_aurora.py --benchmark --particles 5000
+
+# Debug GPU detection
+python tests/test_openmm_aurora.py --log-level DEBUG
+
+# Run OpenMM tests via pytest
+python -m pytest tests/test_openmm_aurora.py -v
+```
+
+**Successful GPU Detection (Aurora Intel GPU):**
+```
+✓ OpenMM version: 8.1.0
+✓ Available platforms: CPU, OpenCL
+✓ Default platform: OpenCL
+🎯 GPU DETECTED: OpenCL platform active (Aurora Intel GPU)
+Performance: ~8000+ steps/second
 ```
 
 ## 📦 Dependencies
 
-The project uses the following key dependencies (see `requirements.txt` at project root):
+The project uses the following key dependencies (see `requirements.txt`):
 
 **Core Workflow:**
 - `langgraph>=0.1.0` - State machine orchestration
