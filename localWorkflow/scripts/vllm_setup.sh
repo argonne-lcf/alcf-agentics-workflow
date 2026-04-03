@@ -1,28 +1,28 @@
 #!/bin/bash
 
 # Detect system
-hostname=$(hostname)
+hostname=$(hostname -f)
 if [[ $hostname == *"aurora"* ]]; then
     SYSTEM="aurora"
 elif [[ $hostname == *"polaris"* ]]; then
     SYSTEM="polaris"
 else
     echo "Unknown system. Run this script on a compute node of Aurora or Polaris."
-    exit 1
+    return 1 2>/dev/null || exit 1
 fi
 echo "Launching vLLM server on $SYSTEM"
 
 # Check that the HF variables are set correctly
 if [ -z "$HF_HOME" ]; then
     echo "Env variable HF_HOME needs to be set. Example: export HF_HOME='/path/to/model/weights'"
-    exit 1
+    return 1 2>/dev/null || exit 1
 fi
 if [ -z "$HF_DATASETS_CACHE" ]; then
     echo "Env variable HF_DATASETS_CACHE needs to be set. Example: export HF_DATASETS_CACHE='/path/to/model/weights'"
 fi
 if [ -z "$HF_TOKEN" ]; then
     echo "Env variable HF_TOKEN needs to be set. Example: export HF_TOKEN='your_HuggingFace_token'"
-    exit 1
+    return 1 2>/dev/null || exit 1
 fi
 echo "HF_HOME: $HF_HOME"
 echo "HF_DATASETS_CACHE: $HF_DATASETS_CACHE"
@@ -31,7 +31,7 @@ echo "HF_TOKEN: $HF_TOKEN"
 # Check that MODEL is set and that the model is available
 if [ -z "$MODEL" ]; then
     echo "Env variable MODEL needs to be set. Example: export MODEL='meta-llama/Meta-Llama-3.1-8B-Instruct'"
-    exit 1
+    return 1 2>/dev/null || exit 1
 fi
 echo "Loading model: $MODEL"
 

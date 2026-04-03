@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 """
 Agentic Workflow Demo - Main CLI Orchestrator
-Demonstrates LangGraph agent running on Crux, querying LLM on Sophia,
-and launching GPU tasks on Aurora via Globus Compute.
+Demonstrates LangGraph agent running on Aurora or Polaris, querying LLM locally on a compute node via vLLM,
+and launching GPU tasks on Aurora.
 """
 
 import argparse
@@ -22,8 +22,8 @@ from typing_extensions import TypedDict
 from sim_kernel import run_md_simulation
 import socket
 
-# Sophia LLM API configuration
-DEFAULT_MODEL = os.getenv("OPENAI_MODEL", "meta-llama/Llama-2-7b-chat-hf")
+# LLM API configuration
+DEFAULT_MODEL = os.getenv("MODEL", "meta-llama/Llama-3.1-8B-Instruct")
 
 
 class AgentState(TypedDict):
@@ -45,7 +45,7 @@ def parse_cli():
    p.add_argument("--protein", "-p", default="p53", 
                   help="Protein name to analyze (default: p53)")
    p.add_argument("--model", "-m",
-                  default=os.getenv("OPENAI_MODEL", DEFAULT_MODEL),
+                  default=os.getenv("MODEL", DEFAULT_MODEL),
                   help="LLM model to use")
    p.add_argument("--hostname", 
                   default=socket.gethostname(),
@@ -173,7 +173,7 @@ Be sure to reply with only JSON, no formatting or extra text, no more than one s
 
 
 def simulation_node(state: AgentState) -> AgentState:
-   """Node that runs GPU simulation via Globus Compute"""
+   """Node that runs GPU simulation"""
    logger = get_logger()
    logger.info("🚀 Launching GPU simulation on Aurora...")
    
@@ -211,18 +211,19 @@ def report_node(state: AgentState) -> AgentState:
 **Error**: {sim_result['error']}
 **Timestamp**: {datetime.now().strftime('%d-%m %H:%M')}
 
-The simulation could not be completed. Please check your Globus Compute endpoint
-and ensure Aurora is accessible.
+The simulation could not be completed. Please check your vLLM server is running and accessible.
 """
    else:
       stability_score = sim_result.get("stability_score", "N/A")
       rmsd = sim_result.get("rmsd", "N/A")
       energy = sim_result.get("final_energy", "N/A")
+      platform = sim_result.get("platform_used", "unknown")
+      status_label = "COMPLETED" if platform != "dummy" else "COMPLETED (with dummy simulation)"
       
       report = f"""
 ## Molecular Dynamics Analysis Report - {protein}
 
-**Status**: ✅ COMPLETED
+**Status**: ✅ {status_label}
 **Timestamp**: {datetime.now().strftime('%d-%m %H:%M')}
 
 ### Simulation Parameters

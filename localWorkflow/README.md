@@ -111,20 +111,14 @@ Before running the workflow, you can check that the vLLM server is running as ex
 
 ```bash
 python tests/test_vllm_server.py
-
-# Expected output:
-# System: You are a helpful assistant.
-# User: Tell me a joke.
-# Assistant:   Of course! Here's a quick joke for you:
-#
-# Why don't scientists trust atoms?
-# Because they make up everything!
-#
-# I hope that brought a smile to your face! Is there anything else I can help you with?
 ```
 
-> [!NOTE]
-> The environment variables for the proxies need to be unset for the OpenAI client to connect to the vLLM server. See the `./scripts/vllm_setup.sh` script for details.
+**Expected output:**
+```bash
+System: You are a helpful assistant.
+User: Introduce yourself.
+Assistant: I'm an artificial intelligence model ...
+```
 
 Now, you can run the agentic workflow with
 
@@ -190,18 +184,28 @@ python src/main.py \
    --max-simulation-time 120
 ```
 
+Once you are done running the workflow, you can teardown the vllm server with
+
+```bash
+./scripts/vllm_teardown.sh
+```
+
 ## 📁 Project Structure
 
 ```
-localWorkflow/
-├── src/
-│   ├── main.py              # CLI orchestrator with LangGraph
-│   ├── sim_kernel.py        # OpenMM simulation for Aurora
-├── scripts/
-│   ├── vllm_setup.sh        # Setup vLLM server
-├── tests/
-│   ├── test_vllm_server.py  # Test for vLLM server
-└── README.md                # This file
+localWorkflow
+├── README.md
+├── requirements.txt
+├── scripts
+│   ├── run_openmm_test.sh
+│   ├── vllm_setup.sh
+│   └── vllm_teardown.sh
+├── src
+│   ├── main.py
+│   └── sim_kernel.py
+└── tests
+    ├── test_openmm_aurora.py
+    └── test_vllm_server.py
 ```
 
 ## 🔧 Components
@@ -223,9 +227,20 @@ localWorkflow/
 - **Purpose**: Setup of vLLM server on the compute node
 - **Usage**: `source scripts/vllm_setup.sh`
 
-### OpenMM Test Suite (`tests/test_vllm_server.py`)
-- **Purpose**: Validates functionality of the local vLLM server
+### vLLM Server Teardown Script (`scripts/vllm_teardown.sh`)
+- **Purpose**: Tear dowm of vLLM server on the compute node
+- **Usage**: `./scripts/vllm_teardown.sh`
+
+### vLLM Server Test Script(`tests/test_vllm_server.py`)
+- **Purpose**: Validates reachability and functionality of the local vLLM server
 - **Usage**: `python tests/test_vllm_server.py`
+
+### OpenMM Test Suite (`tests/test_openmm_aurora.py`)
+- **Purpose**: Validates OpenMM functionality and GPU acceleration on Aurora
+- **Features**: Platform detection, performance benchmarking, Intel GPU verification
+- **Platforms**: Automatic detection, OpenCL/CPU comparison, device enumeration
+- **Usage**: `python tests/test_openmm_aurora.py --platform auto --steps 1000`
+- **Script**: `./scripts/run_openmm_test.sh [platform] [steps]`
 
 ## 📊 Simulation Details
 
@@ -241,7 +256,7 @@ The demo runs simplified molecular dynamics simulations with the following chara
 
 ## 🧪 Testing
 
-The project includes testing for functionality of the vLLM server.
+The project includes testing for functionality of the vLLM server and the OpenMM simulation
 
 ### vLLM server tests
 
@@ -249,19 +264,47 @@ The project includes testing for functionality of the vLLM server.
 # Test that the vLLM server can serve a simple request
 python tests/test_vllm_server.py
 ```
-
-### Expected Test Results
-
 **Successful vLLM serving:**
 ```
 System: You are a helpful assistant.
-User: Tell me a joke.
-Assistant:   Of course! Here's a quick joke for you:
+User: Introduce yourself.
+Assistant: I'm an artificial intelligence model ...
+```
 
-Why don't scientists trust atoms?
-Because they make up everything!
+### OpenMM simulation tests
 
-I hope that brought a smile to your face! Is there anything else I can help you with?
+Test OpenMM functionality and GPU acceleration:
+
+```bash
+# Quick test using the shell script (recommended)
+./scripts/run_openmm_test.sh
+
+# Test with specific parameters
+./scripts/run_openmm_test.sh OpenCL 2000
+
+# Direct Python execution with platform detection
+python tests/test_openmm_aurora.py --platform auto
+
+# Test specific platform
+python tests/test_openmm_aurora.py --platform OpenCL --steps 1000
+
+# Performance benchmarking
+python tests/test_openmm_aurora.py --benchmark --particles 5000
+
+# Debug GPU detection
+python tests/test_openmm_aurora.py --log-level DEBUG
+
+# Run OpenMM tests via pytest
+python -m pytest tests/test_openmm_aurora.py -v
+```
+
+**Successful GPU Detection (Aurora Intel GPU):**
+```
+✓ OpenMM version: 8.1.0
+✓ Available platforms: CPU, OpenCL
+✓ Default platform: OpenCL
+🎯 GPU DETECTED: OpenCL platform active (Aurora Intel GPU)
+Performance: ~8000+ steps/second
 ```
 
 ## 📦 Dependencies
