@@ -20,7 +20,7 @@ Agentic workflows are intelligent computational pipelines that use AI agents to 
 
 ### 1. [Remote Agent Driven Simulation on Aurora](./remoteGlobusToAurora/)
 
-**Description**: An end-to-end workflow that demonstrates a LangGraph agent running on Crux, querying a language model on Sophia for protein analysis, then launching GPU-accelerated molecular dynamics simulations on Aurora via Globus Compute.
+**Description**: An end-to-end workflow that demonstrates a LangGraph agent running on Crux or your laptop/local system, querying a language model on Sophia for protein analysis, then launching GPU-accelerated molecular dynamics simulations on Aurora via Globus Compute.
 
 **Technologies**: 
 - **LangGraph** - Agent orchestration framework
@@ -56,7 +56,7 @@ Agentic workflows are intelligent computational pipelines that use AI agents to 
 ### Prerequisites
 
 - Python 3.8+ with virtual environment capabilities
-- Access to ALCF systems (Crux, Aurora)
+- Access to ALCF systems (Crux, Aurora, Polaris)
 - Globus authentication setup
 - Basic familiarity with Python and command-line tools
 
@@ -64,27 +64,16 @@ Agentic workflows are intelligent computational pipelines that use AI agents to 
 
 1. **Clone the repository**
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/argonne-lcf/alcf-agentics-workflow.git
    cd alcf_agentics_workflow
    ```
 
-2. **Set up virtual environment**
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
-
-3. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt  # Install shared dependencies
-   ```
-
-4. **Choose an example workflow**
+2. **Choose an example workflow**
    ```bash
    cd remoteGlobusToAurora  # Start with the first example
    ```
 
-5. **Follow the example-specific setup instructions**
+3. **Follow the example-specific setup instructions**
    Each workflow directory contains its own detailed README with setup and usage instructions.
 
 
