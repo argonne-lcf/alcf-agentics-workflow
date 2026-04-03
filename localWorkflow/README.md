@@ -13,7 +13,17 @@ Questions: rbalin@anl.gov, htummalapalli@anl.gov
 - HuggingFace account and user access token
 
 > [!WARNING]
-> A personal HuggingFace account and user access token will be needed in order to serve the LLMs locally on the systems. Please [create an account](https://huggingface.co/join) on HuggingFace and follow [instructions](https://huggingface.co/docs/hub/en/security-tokens) to create a token. A read-only token is sufficient. Additionally, to access the Meta Llama 2 model being used for this example, please [request access to the model](https://huggingface.co/meta-llama/Llama-2-7b-chat-hf) (this should only take a few minutes and you can check the status of your request clicking on your profile settings and Gated Repositories). 
+> - A personal HuggingFace account and user access token will be needed in order to serve the LLMs locally on the systems. Please [create an account](https://huggingface.co/join) on HuggingFace and follow [instructions](https://huggingface.co/docs/hub/en/security-tokens) to create a token. A read-only token is sufficient. Additionally, to access the Meta Llama 3.1 8B model being used for this example, please [request access to the model](https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct) (this should only take a few minutes and you can check the status of your request clicking on your profile settings and Gated Repositories). 
+> - To download the LLama 3.1 8B model, execute the following on Aurora or Polaris. 
+```bash
+# Load frameworks/conda module (e.g., module load frameworks)
+# Authenticate with HF (this will require your HuggingFace token)
+hf auth login
+
+# Download the model weights
+export HF_HOME=/path/to/.cache
+hf download meta-llama/Llama-3.1-8B-Instruct
+```
 
 ### Setup on Aurora
 
@@ -79,8 +89,8 @@ module load conda
 source venv/bin/activate
 
 # On either system
-export HF_HOME="/path/to/model/weights"
-export HF_DATASETS_CACHE="/path/to/model/weights"
+export HF_HOME="/path/to/.cache"
+export HF_DATASETS_CACHE="/path/to/.cache"
 export HF_TOKEN="your_HuggingFace_token"
 export MODEL="meta-llama/Meta-Llama-3.1-8B-Instruct"
 export TMPDIR="/tmp"
