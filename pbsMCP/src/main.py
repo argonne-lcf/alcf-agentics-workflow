@@ -70,9 +70,23 @@ def parse_cli() -> argparse.Namespace:
         ),
         help="Natural-language instruction for the agent",
     )
-    p.add_argument("--model", "-m", default=DEFAULT_MODEL, help="LLM model on Sophia")
-    p.add_argument("--poll-interval", type=int, default=60, help="Seconds between polls")
-    p.add_argument("--max-polls", type=int, default=10, help="Max polling rounds")
+    p.add_argument(
+        "--model", "-m",
+        default=DEFAULT_MODEL,
+        help="LLM model on Sophia",
+    )
+    p.add_argument(
+        "--poll-interval",
+        type=int,
+        default=120,
+        help="Seconds between polls",
+    )
+    p.add_argument(
+        "--max-polls",
+        type=int,
+        default=10,
+        help="Max polling rounds",
+    )
     p.add_argument(
         "--log-level", "-l", default="INFO",
         choices=["DEBUG", "INFO", "WARNING", "ERROR"],
@@ -168,26 +182,26 @@ MAX_NUDGES = 4
 def _seems_incomplete(text: str) -> bool:
     """Heuristic: does the model's text indicate it plans to do more?"""
     lower = text.lower()
-    continuation = ["next,", "i will", "let me", "i'll", "now i", "let's", "proceeding"]
+    continuation = ["next,", "i will", "let me", "i'll", "now i", "proceeding"]
     return any(s in lower for s in continuation)
 
 
 def _fix_arguments(
     tool_name: str, arguments: str, batch_state: Dict[str, Any],
 ) -> str:
-    """Patch placeholder or missing arguments using real values."""
-    if tool_name == "submit_job":
+    """Patch placeholder arguments using real values from earlier calls.
+
+    Some models batch tool calls with placeholder values instead of
+    chaining results sequentially. This substitutes concrete values
+    captured from earlier calls in the same batch.
+    """
+    if tool_name == "submit_job" and batch_state.get("script_path"):
         parsed = json.loads(arguments)
-        # Default filesystems to "home" (required on Aurora)
-        if not parsed.get("filesystems"):
-            parsed["filesystems"] = "home"
-            logger.info("   ⚡ Defaulted filesystems → home")
-        # Fix placeholder script_path
         sp = parsed.get("script_path", "")
-        if batch_state.get("script_path") and (not sp or not os.path.isfile(sp)):
+        if not sp or not os.path.isfile(sp):
             parsed["script_path"] = batch_state["script_path"]
             logger.info(f"   ⚡ Fixed script_path → {batch_state['script_path']}")
-        return json.dumps(parsed)
+            return json.dumps(parsed)
 
     if tool_name == "get_job_status" and batch_state.get("job_id"):
         parsed = json.loads(arguments)
@@ -259,7 +273,8 @@ async def run_conversation(
             # Patch placeholder / missing arguments using earlier results
             arguments = _fix_arguments(tool_name, arguments, batch_state)
 
-            logger.info(f"🔧 Tool call: {tool_name}({arguments[:200]})")
+            logger.info(f"🔧 Calling {tool_name}")
+            logger.debug(f"   Arguments: {arguments[:200]}")
 
             try:
                 if tool_name in CUSTOM_TOOLS:
@@ -279,7 +294,7 @@ async def run_conversation(
                     batch_state["job_id"] = jid
 
             result_str = _truncate_result(payload)
-            logger.info(f"   ↳ Result ({len(result_str)} chars): {result_str[:300]}")
+            logger.debug(f"   ↳ Result: {result_str[:300]}")
 
             messages.append({
                 "role": "tool",

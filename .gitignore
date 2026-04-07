@@ -62,3 +62,11 @@ env/
 
 # Cloned dependency repos
 pbs-mcp-demo/
+
+# Generated files from pbsMCP workflow
+submit_openmm.sh
+params.json
+*.o[0-9]*
+*.e[0-9]*
+*_stdout.txt
+*_stderr.txt

@@ -12,9 +12,9 @@ import json
 from pathlib import Path
 from typing import Any, Dict
 
-SRC_DIR = Path(__file__).resolve().parent.parent  # pbsMCP/src/
-SCRIPTS_DIR = SRC_DIR.parent / "scripts"
-VENV_DIR = SRC_DIR.parent / "venv"
+SRC_DIR = Path(__file__).resolve().parent.parent   # pbsMCP/src/
+EXAMPLE_DIR = SRC_DIR.parent                       # pbsMCP/
+VENV_DIR = EXAMPLE_DIR / "venv"
 MAX_FILE_BYTES = 16_384
 
 
@@ -70,9 +70,7 @@ def generate_sim_script(arguments: str) -> Dict[str, Any]:
         "steps": steps,
     }
 
-    SCRIPTS_DIR.mkdir(parents=True, exist_ok=True)
-
-    params_file = SCRIPTS_DIR / "params.json"
+    params_file = EXAMPLE_DIR / "params.json"
     params_file.write_text(json.dumps(params, indent=2))
 
     venv_line = ""
@@ -81,13 +79,13 @@ def generate_sim_script(arguments: str) -> Dict[str, Any]:
 
     script_content = f"""#!/bin/bash
 module load frameworks
-cd {SRC_DIR}
+cd {EXAMPLE_DIR}
 {venv_line}
 
-python sim_kernel.py {params_file.resolve()}
+python src/sim_kernel.py {params_file.resolve()}
 """
 
-    script_path = SCRIPTS_DIR / "run_simulation.sh"
+    script_path = EXAMPLE_DIR / "submit_openmm.sh"
     script_path.write_text(script_content)
     script_path.chmod(0o755)
 
