@@ -59,3 +59,6 @@ Thumbs.db
 # Conda env and Python venvs
 venv/
 env/
+
+# Cloned dependency repos
+pbs-mcp-demo/

@@ -1,0 +1,14 @@
+# Core dependencies for Agentic Workflow Demo
+openai>=1.0.0
+mcp>=1.0.0
+
+# Globus auth (for Sophia LLM access)
+globus-sdk>=3.0.0
+
+# Testing
+pytest>=7.0.0
+pytest-mock>=3.10.0
+
+# Development
+ruff>=0.1.0
+
