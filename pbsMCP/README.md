@@ -1,6 +1,6 @@
 # Agent Driven Simulation on Aurora with [PBS MCP Server](https://github.com/jtchilders/pbs-mcp-demo)
 
-Add summary here ...
+A demonstration of an end-to-end agentic workflow that showcases ALCF infrastructure integration. The workflow runs on an Aurora login node, queries a language model on the Sophia inference service to interpret natural-language goals, and uses the [PBS MCP server](https://github.com/jtchilders/pbs-mcp-demo) to interact with the local scheduler: listing queues, submitting batch jobs, checking status, and reading job output. GPU-accelerated OpenMM molecular dynamics runs on Aurora compute nodes inside those PBS jobs, driven by a small custom tool that generates the submit script and parameters.
 
 ## ⚡ Quick Start
 
@@ -172,7 +172,64 @@ python src/main.py -h
 
 ## 📁 Project Structure
 
+pbsMCP
+├── README.md
+├── requirements.txt
+├── scripts
+│   └── run_openmm_test.sh
+├── src
+│   ├── main.py
+│   ├── sim_kernel.py
+│   ├── tools
+│   │   ├── custom_tools.py
+│   │   ├── globus_interface.py
+│   │   ├── __init__.py
+│   └── utils.py
+├── tests
+│   └── test_openmm_aurora.py
+
 ## 🔧 Components
+
+### LLM Agent (`src/main.py`)
+- **Purpose**: Drives the workflow with the Sophia inference API (OpenAI-compatible) and a manual tool-calling loop (same pattern as [pbs-mcp-demo `openai_mcp_bridge.py`](https://github.com/jtchilders/pbs-mcp-demo/blob/main/examples/openai_mcp_bridge.py))
+- **Features**: CLI (`--prompt`, `--model`, `--poll-interval`, `--max-polls`, `--log-level`), Globus-backed `OpenAI` client, structured logging, optional nudging when the model stops before calling tools, max rounds per conversation turn to avoid hammering PBS
+- **Workflow**: Natural-language prompt → LLM chooses PBS MCP tools and custom tools → after a job is submitted, a polling loop waits and re-prompts the model to check status and read output files
+- **Integration**: Spawns the PBS MCP server over stdio (`python -m pbs_mcp.server`), maps MCP tools to OpenAI function schemas, merges in custom tools from `tools/custom_tools.py`
+- **Model**: Defaults to `openai/gpt-oss-120b` (override with `OPENAI_MODEL` or `--model` / `-m`)
+- **Usage**: `python src/main.py` or `python src/main.py --prompt "..." --log-level DEBUG`
+
+### Workflow helpers (`src/utils.py`)
+- **Purpose**: Shared helpers for the agent and MCP bridge
+- **Features**: `mcp_tool_to_openai_schema()` (MCP `Tool` → OpenAI function dict), `extract_job_id()` / `job_finished()` for polling, truncation of large tool payloads (queues/jobs lists and overall size) to stay within LLM context limits
+
+### Custom tools (`src/tools/custom_tools.py`)
+- **Purpose**: LangChain-free OpenAI function schemas plus handlers the PBS server does not provide
+- **`generate_sim_script`**: Writes `submit_openmm.sh` and `params.json` under the example root; PBS job runs OpenMM via `src/sim_kernel.py` inside the submitted script
+- **`read_local_file`**: Reads stdout/stderr (or any text file) after the job finishes, using paths from PBS attributes
+
+### Globus authentication (`src/tools/globus_interface.py`)
+- **Purpose**: Centralized Globus authentication for ALCF services (same pattern as the remote Globus example)
+- **Features**: Token management, refresh handling, domain-based login flow
+- **Clients**: Sophia inference API (`get_access_token()` used as the API key)
+- **CLI**: `python src/tools/globus_interface.py authenticate [--force]`
+
+### PBS MCP Server ([pbs-mcp-demo](https://github.com/jtchilders/pbs-mcp-demo))
+- **Purpose**: Separate install (`git clone` + `pip install -e .`) exposing scheduler operations as MCP tools (`submit_job`, `get_job_status`, `list_queues`, etc.)
+- **Runtime**: Started as a subprocess by `main.py`; requires `PBS_SERVER`, `PBS_ACCOUNT`, `PBS_ROLE`, and PBS Python API environment (see Quick Start)
+- **Note**: Prefer fixing site-specific behavior (e.g. `filesystems`, `Job_Name`, default stdout/stderr) in this upstream repo when possible
+
+### Simulation kernel (`src/sim_kernel.py`)
+- **Purpose**: Runs simplified molecular dynamics when the submitted batch script executes on a compute node
+- **Technology**: OpenMM with OpenCL (or CPU fallback) 
+- **Output**: JSON-style metrics (energy, RMSD, stability, timings) printed to job stdout
+- **Features**: Configurable protein label and MD parameters via `params.json`
+
+### OpenMM test suite (`tests/test_openmm_aurora.py`)
+- **Purpose**: Validates OpenMM functionality and GPU acceleration on Aurora
+- **Features**: Platform detection, performance benchmarking, Intel GPU verification
+- **Platforms**: Automatic detection, OpenCL/CPU comparison, device enumeration
+- **Usage**: `python tests/test_openmm_aurora.py --platform auto --steps 1000`
+- **Script**: `./scripts/run_openmm_test.sh [platform] [steps]`
 
 ## 📊 Simulation Details
 
@@ -188,6 +245,44 @@ The demo runs simplified molecular dynamics simulations with the following chara
 
 ## 🧪 Testing
 
+The project includes testing for functionality of the OpenMM simulation
+
+### OpenMM simulation tests
+
+Test OpenMM functionality and GPU acceleration:
+
+```bash
+# Quick test using the shell script (recommended)
+./scripts/run_openmm_test.sh
+
+# Test with specific parameters
+./scripts/run_openmm_test.sh OpenCL 2000
+
+# Direct Python execution with platform detection
+python tests/test_openmm_aurora.py --platform auto
+
+# Test specific platform
+python tests/test_openmm_aurora.py --platform OpenCL --steps 1000
+
+# Performance benchmarking
+python tests/test_openmm_aurora.py --benchmark --particles 5000
+
+# Debug GPU detection
+python tests/test_openmm_aurora.py --log-level DEBUG
+
+# Run OpenMM tests via pytest
+python -m pytest tests/test_openmm_aurora.py -v
+```
+
+**Successful GPU Detection (Aurora Intel GPU):**
+```
+✓ OpenMM version: 8.1.0
+✓ Available platforms: CPU, OpenCL
+✓ Default platform: OpenCL
+🎯 GPU DETECTED: OpenCL platform active (Aurora Intel GPU)
+Performance: ~8000+ steps/second
+```
+
 ## 📦 Dependencies
 
 The project uses the following key dependencies (see `requirements.txt`):
@@ -202,12 +297,16 @@ The project uses the following key dependencies (see `requirements.txt`):
 **Simulation (from frameworks module):**
 - `openmm` - Molecular dynamics simulation engine (provided by `module load frameworks`)
 
+**Development/Testing:**
+- `pytest>=7.0.0` - Unit testing framework
+- `pytest-mock>=3.10.0` - Mocking capabilities
+- `ruff>=0.1.0` - Code linting and formatting
+
 ## 🚀 System Requirements
 
 - **Python**: 3.10+ (matching Aurora Framework module)
-- **Platforms**: Crux (orchestration), Aurora (compute), Sophia (inference)
+- **Platforms**: Aurora (compute and orchestration), Sophia (inference)
 - **GPU**: Intel GPUs on Aurora (OpenCL support)
-- **Network**: Proxy configuration for external API access from Crux
 
 ---
 

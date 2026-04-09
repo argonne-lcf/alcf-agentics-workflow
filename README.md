@@ -52,15 +52,19 @@ Agentic workflows are intelligent computational pipelines that use AI agents to 
 
 ### 3. [Leveraging PBS MCP Server for Job Query and Scheduling](./pbsMCP)
 
-**Description**: 
+**Description**: An end-to-end workflow that runs on an Aurora login node. A language model on the Sophia inference service chooses tools over a manual OpenAI-style tool-calling loop, while a local [PBS MCP server](https://github.com/jtchilders/pbs-mcp-demo) exposes PBS operations (queues, submit, status, job listing). The agent can generate a PBS batch script, submit OpenMM molecular dynamics to Aurora compute queues, poll until completion, and read job stdout/stderr for summaries.
 
 **Technologies**:
-- **LangGraph** - Agent orchestration framework
-- **Local LLM Service via vLLM** - Protein analysis and simulation planning
-- **Aurora GPU** - High-performance molecular dynamics simulation
+- **Sophia LLM Service** - Tool-calling and natural-language orchestration (OpenAI-compatible API)
+- **Model Context Protocol (MCP)** - Structured access to PBS tools via stdio subprocess
+- **PBS MCP Server** - Scheduler integration (submit, status, queues, etc.)
+- **OpenMM** - GPU-accelerated molecular dynamics inside submitted PBS jobs
+- **Aurora** - Login-node orchestration and compute-node simulation
+- **Globus** - Authentication for the Sophia inference API
 
 **Use Cases**:
-- 
+- Natural-language driven PBS interaction
+- Natural-launguage driven job submission, monitoring and job output summary
 
 ---
 
@@ -70,6 +74,7 @@ Agentic workflows are intelligent computational pipelines that use AI agents to 
 
 - Python 3.8+ with virtual environment capabilities
 - Access to ALCF systems (Crux, Aurora, Polaris)
+- Access to Inference Endpoint on Sophia/Metis
 - Globus authentication setup
 - Basic familiarity with Python and command-line tools
 
@@ -94,6 +99,7 @@ Agentic workflows are intelligent computational pipelines that use AI agents to 
 
 - **[ALCF Documentation](https://docs.alcf.anl.gov/)** - Official ALCF user guides
 - **[Aurora User Guide](https://docs.alcf.anl.gov/aurora/)** - Aurora-specific documentation
+- **[ALCF Inference Endpoints](https://docs.alcf.anl.gov/services/inference-endpoints/) - ALCF Inference Endpoint documentation
 - **[Globus Compute Documentation](https://globus-compute.readthedocs.io/)** - Remote execution guide
 - **[LangGraph Tutorials](https://langchain-ai.github.io/langgraph/)** - Agent workflow patterns
 
@@ -103,7 +109,7 @@ For questions about these examples or ALCF systems:
 
 - **General ALCF Support**: [ALCF Help Desk](https://www.alcf.anl.gov/support-center)
 - **Repository Issues**: Use GitHub Issues for bug reports and feature requests
-- **Example-specific questions**: Contact: jchilders@anl.gov
+- **Example-specific questions**: Contact: jchilders@anl.gov, rbalin@anl.gov
 
 ---
 
