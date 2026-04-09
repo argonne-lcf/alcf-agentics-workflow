@@ -1,0 +1,313 @@
+# Agent Driven Simulation on Aurora with [PBS MCP Server](https://github.com/jtchilders/pbs-mcp-demo)
+
+A demonstration of an end-to-end agentic workflow that showcases ALCF infrastructure integration. The workflow runs on an Aurora login node, queries a language model on the Sophia inference service to interpret natural-language goals, and uses the [PBS MCP server](https://github.com/jtchilders/pbs-mcp-demo) to interact with the local scheduler: listing queues, submitting batch jobs, checking status, and reading job output. GPU-accelerated OpenMM molecular dynamics runs on Aurora compute nodes inside those PBS jobs, driven by a small custom tool that generates the submit script and parameters.
+
+## ⚡ Quick Start
+
+### Prerequisites
+
+- Python 3.X with virtual environment
+- Access to ALCF systems: Aurora
+- Globus authentication set up for using the Inference Service
+
+### Set up on Aurora
+
+```bash
+ssh <user_name>@aurora.alcf.anl.gov                                 # login to Aurora
+git clone https://github.com/argonne-lcf/alcf-agentics-workflow.git # checkout repo
+cd alcf-agentics-workflow/pbsMCP                                    # enter example dir
+module load frameworks                                              # get python in PATH
+python -m venv venv                                                 # setup virtual environment
+source venv/bin/activate                                            # activate virtual environment
+pip install -r requirements.txt                                     # install dependencies for the demo
+
+# Install the PBS MCP Server
+git clone https://github.com/jtchilders/pbs-mcp-demo.git
+cd pbs-mcp-demo
+git submodule update --init --recursive
+pip install -r requirements.txt                                     
+pip install -e .
+cd ..
+
+# Export variables needed by PBS MCP Server
+export PBS_SERVER="aurora-pbs-0001.host"
+export PBS_ACCOUNT="your_project"                                   # add your project name here
+export PBS_ROLE="user"
+source pbs-mcp-demo/external/pbs-python-api/setup_env.sh aurora
+
+# Authenticate with Globus to access the Inference Service
+python src/tools/globus_interface.py authenticate
+```
+
+Aurora is now ready to run the workflow.
+
+> [!WARNING]
+> - When authenticating with Globus, you should expect to see a link asking for authentication with ALCF credentials. If this is not happening, it may be necessary to force re-authentication by running `python src/tools/globus_interface.py authenticate --force`
+
+### Run Demo
+
+Make sure the envirnoment is set up correctly as described above, specifically the PBS MCP server and Globus authentication.
+Then run the example with
+
+```bash
+python src/main.py
+```
+
+which will execute the default prompt to the LLM, defined to be "Check what queues are available, then generate and submit an OpenMM simulation for protein p53 on the debug queue. Monitor the job until it finishes and summarize the results."
+
+**Expected Output**
+```bash
+09-04 20:35 | INFO     | 🚀 Starting PBS MCP Agentic Workflow
+09-04 20:35 | INFO     | 🤖 Model: openai/gpt-oss-120b
+09-04 20:35 | INFO     | 💬 Prompt: Check what queues are available, then generate and submit an OpenMM simulation for protein p53 on the debug queue. Monitor the job until it finishes and summarize the results.
+<frozen runpy>:128: RuntimeWarning: 'pbs_mcp.server' found in sys.modules after import of package 'pbs_mcp', but prior to execution of 'pbs_mcp.server'; this may result in unpredictable behaviour
+Processing request of type ListToolsRequest
+09-04 20:35 | INFO     | 🔧 Found 11 PBS MCP tools
+09-04 20:35 | INFO     | 🔧 Added 2 custom tools
+09-04 20:35 | INFO     | 🔄 Sending prompt to agent...
+09-04 20:35 | INFO     | 🔧 Calling list_queues
+Processing request of type CallToolRequest
+09-04 20:35 | INFO     | 🔧 Calling generate_sim_script
+09-04 20:35 | INFO     | 🔧 Calling submit_job
+Processing request of type CallToolRequest
+09-04 20:35 | INFO     | 🤖 Agent response:
+
+============================================================
+The OpenMM simulation script for protein **p53** has been generated and submitted to the **debug** queue.
+
+**Job details**
+- **Job ID:** `8430395.aurora-pbs-0001.hostmgmt.cm.aurora.alcf.anl.gov`
+- **Queue:** debug
+- **Walltime:** 00:10:00 (default)
+- **Node count:** 1
+- **Account:** datascience
+- **Filesystems:** home
+
+The job is now in the PBS system. Let me know when you’d like me to check the job status, and I’ll query it for you. When the job reaches the **F** (finished) state, I’ll read the output files and provide a summary of the results.
+============================================================
+
+09-04 20:35 | INFO     | ⏳ Job 8430395 submitted. Polling every 120 seconds until complete...
+09-04 20:37 | INFO     | 🔧 Calling get_job_status
+Processing request of type CallToolRequest
+09-04 20:37 | INFO     | 🤖 Poll 1 response:
+
+============================================================
+The job **8430395.aurora-pbs-0001.hostmgmt.cm.aurora.alcf.anl.gov** is still **queued** (`job_state: Q`). It has not finished yet, so there’s no stdout file to read at this moment.
+
+Let me know when you’d like me to check the status again, and I’ll query the job once more. When the job reaches the `F` (finished) state, I’ll retrieve and summarize the output for you.
+============================================================
+
+9-04 20:41 | INFO     | 🔧 Calling get_job_status
+Processing request of type CallToolRequest
+09-04 20:41 | INFO     | 🔧 Calling read_local_file
+09-04 20:41 | INFO     | 🤖 Poll 2 response:
+
+============================================================
+The PBS job **8430395** has now finished (`job_state: F`). I read its stdout file and extracted the JSON‑formatted results of the OpenMM simulation for protein **p53**.
+
+**Simulation Summary**
+
+| Item | Value |
+|------|-------|
+| **Initial Energy** | 616.41 kJ·mol⁻¹ |
+| **Final Energy** | 24.29 kJ·mol⁻¹ |
+| **RMSD** (root‑mean‑square deviation) | 1.5 Å |
+| **Stability Score** | 0.554 |
+| **Total MD Steps** | 10 000 |
+| **Simulation Time (simulated)** | 0.02 ns |
+| **Wall‑clock Time** | 1.9 s |
+| **MD Computation Time** | 0.17 s |
+| **Energy Minimization Time** | 0.14 s |
+| **Performance** | 59 769 steps / s |
+| **Temperature** | 300 K |
+| **Timestep** | 0.002 ps |
+| **Platform Used** | OpenCL |
+| **OpenMM Version** | 8.3.1 |
+| **Status** | completed (exit status 0) |
+
+**Interpretation**
+
+- The system rapidly lowered its potential energy from ~616 kJ·mol⁻¹ to ~24 kJ·mol⁻¹, indicating successful minimization and equilibration.
+- An RMSD of ~1.5 Å suggests the protein remained close to its initial structure, consistent with a short 0.02 ns trajectory.
+- The stability score (≈0.55) reflects moderate structural stability over the brief simulation.
+- Performance of ~60 k steps s⁻¹ on a single debug‑queue node shows the OpenCL GPU backend is efficiently utilized.
+
+The job completed successfully with no errors. Let me know if you need any additional analysis, the stderr contents, or wish to run another simulation.
+============================================================
+
+09-04 20:41 | INFO     | ✅ Job 8430395 finished after 3 poll(s).
+09-04 20:41 | INFO     | ⏱️ Completed in 403.1s
+```
+
+To run with a custom prompts, execute
+
+```bash
+python src/main.py -p "Can you list and print the running jobs for user <user_name>?"
+```
+
+The see the full set of options, run:
+```bash
+python src/main.py -h 
+
+# Ouptut
+#usage: pbs-mcp-agent [-h] [--prompt PROMPT] [--model MODEL] [--poll-interval POLL_INTERVAL] [--max-polls MAX_POLLS] [--log-level {DEBUG,INFO,WARNING,ERROR}]
+#
+#LLM-driven agent with PBS MCP tools on ALCF systems
+#
+#options:
+#  -h, --help            show this help message and exit
+#  --prompt PROMPT, -p PROMPT
+#                        Natural-language instruction for the agent
+#  --model MODEL, -m MODEL
+#                        LLM model on Sophia
+#  --poll-interval POLL_INTERVAL
+#                        Seconds between polls
+#  --max-polls MAX_POLLS
+#                        Max polling rounds
+#  --log-level {DEBUG,INFO,WARNING,ERROR}, -l {DEBUG,INFO,WARNING,ERROR}
+```
+
+> [!WARNING]
+> - If the example raises the error `No module named pbs_ifl`, please make sure the PBS MCP server environment variables are set correctly and run the `pbs-mcp-demo/external/pbs-python-api/setup_env.sh` script for the appropriate system.
+
+## 📁 Project Structure
+
+pbsMCP
+├── README.md
+├── requirements.txt
+├── scripts
+│   └── run_openmm_test.sh
+├── src
+│   ├── main.py
+│   ├── sim_kernel.py
+│   ├── tools
+│   │   ├── custom_tools.py
+│   │   ├── globus_interface.py
+│   │   ├── __init__.py
+│   └── utils.py
+├── tests
+│   └── test_openmm_aurora.py
+
+## 🔧 Components
+
+### LLM Agent (`src/main.py`)
+- **Purpose**: Drives the workflow with the Sophia inference API (OpenAI-compatible) and a manual tool-calling loop (same pattern as [pbs-mcp-demo `openai_mcp_bridge.py`](https://github.com/jtchilders/pbs-mcp-demo/blob/main/examples/openai_mcp_bridge.py))
+- **Features**: CLI (`--prompt`, `--model`, `--poll-interval`, `--max-polls`, `--log-level`), Globus-backed `OpenAI` client, structured logging, optional nudging when the model stops before calling tools, max rounds per conversation turn to avoid hammering PBS
+- **Workflow**: Natural-language prompt → LLM chooses PBS MCP tools and custom tools → after a job is submitted, a polling loop waits and re-prompts the model to check status and read output files
+- **Integration**: Spawns the PBS MCP server over stdio (`python -m pbs_mcp.server`), maps MCP tools to OpenAI function schemas, merges in custom tools from `tools/custom_tools.py`
+- **Model**: Defaults to `openai/gpt-oss-120b` (override with `OPENAI_MODEL` or `--model` / `-m`)
+- **Usage**: `python src/main.py` or `python src/main.py --prompt "..." --log-level DEBUG`
+
+### Workflow helpers (`src/utils.py`)
+- **Purpose**: Shared helpers for the agent and MCP bridge
+- **Features**: `mcp_tool_to_openai_schema()` (MCP `Tool` → OpenAI function dict), `extract_job_id()` / `job_finished()` for polling, truncation of large tool payloads (queues/jobs lists and overall size) to stay within LLM context limits
+
+### Custom tools (`src/tools/custom_tools.py`)
+- **Purpose**: LangChain-free OpenAI function schemas plus handlers the PBS server does not provide
+- **`generate_sim_script`**: Writes `submit_openmm.sh` and `params.json` under the example root; PBS job runs OpenMM via `src/sim_kernel.py` inside the submitted script
+- **`read_local_file`**: Reads stdout/stderr (or any text file) after the job finishes, using paths from PBS attributes
+
+### Globus authentication (`src/tools/globus_interface.py`)
+- **Purpose**: Centralized Globus authentication for ALCF services (same pattern as the remote Globus example)
+- **Features**: Token management, refresh handling, domain-based login flow
+- **Clients**: Sophia inference API (`get_access_token()` used as the API key)
+- **CLI**: `python src/tools/globus_interface.py authenticate [--force]`
+
+### PBS MCP Server ([pbs-mcp-demo](https://github.com/jtchilders/pbs-mcp-demo))
+- **Purpose**: Separate install (`git clone` + `pip install -e .`) exposing scheduler operations as MCP tools (`submit_job`, `get_job_status`, `list_queues`, etc.)
+- **Runtime**: Started as a subprocess by `main.py`; requires `PBS_SERVER`, `PBS_ACCOUNT`, `PBS_ROLE`, and PBS Python API environment (see Quick Start)
+- **Note**: Prefer fixing site-specific behavior (e.g. `filesystems`, `Job_Name`, default stdout/stderr) in this upstream repo when possible
+
+### Simulation kernel (`src/sim_kernel.py`)
+- **Purpose**: Runs simplified molecular dynamics when the submitted batch script executes on a compute node
+- **Technology**: OpenMM with OpenCL (or CPU fallback) 
+- **Output**: JSON-style metrics (energy, RMSD, stability, timings) printed to job stdout
+- **Features**: Configurable protein label and MD parameters via `params.json`
+
+### OpenMM test suite (`tests/test_openmm_aurora.py`)
+- **Purpose**: Validates OpenMM functionality and GPU acceleration on Aurora
+- **Features**: Platform detection, performance benchmarking, Intel GPU verification
+- **Platforms**: Automatic detection, OpenCL/CPU comparison, device enumeration
+- **Usage**: `python tests/test_openmm_aurora.py --platform auto --steps 1000`
+- **Script**: `./scripts/run_openmm_test.sh [platform] [steps]`
+
+## 📊 Simulation Details
+
+The demo runs simplified molecular dynamics simulations with the following characteristics:
+
+- **Duration**: 10,000 steps × 2 fs = 20 ps simulation time
+- **Output**: Stability metrics, RMSD, potential energy
+- **Hardware**: Intel GPU acceleration on Aurora
+- **Timeout**: 3 minutes maximum (configurable)
+
+> **Note**: This is a demonstration with simplified physics. Real MD simulations would require proper force fields, solvation, and longer timescales.
+
+
+## 🧪 Testing
+
+The project includes testing for functionality of the OpenMM simulation
+
+### OpenMM simulation tests
+
+Test OpenMM functionality and GPU acceleration:
+
+```bash
+# Quick test using the shell script (recommended)
+./scripts/run_openmm_test.sh
+
+# Test with specific parameters
+./scripts/run_openmm_test.sh OpenCL 2000
+
+# Direct Python execution with platform detection
+python tests/test_openmm_aurora.py --platform auto
+
+# Test specific platform
+python tests/test_openmm_aurora.py --platform OpenCL --steps 1000
+
+# Performance benchmarking
+python tests/test_openmm_aurora.py --benchmark --particles 5000
+
+# Debug GPU detection
+python tests/test_openmm_aurora.py --log-level DEBUG
+
+# Run OpenMM tests via pytest
+python -m pytest tests/test_openmm_aurora.py -v
+```
+
+**Successful GPU Detection (Aurora Intel GPU):**
+```
+✓ OpenMM version: 8.1.0
+✓ Available platforms: CPU, OpenCL
+✓ Default platform: OpenCL
+🎯 GPU DETECTED: OpenCL platform active (Aurora Intel GPU)
+Performance: ~8000+ steps/second
+```
+
+## 📦 Dependencies
+
+The project uses the following key dependencies (see `requirements.txt`):
+
+**Core Workflow:**
+- `openai>=1.0.0` - LLM API client (talks to Sophia vLLM endpoint)
+- `mcp>=1.0.0` - Model Context Protocol client (talks to PBS MCP server)
+
+**Auth:**
+- `globus-sdk>=3.0.0` - Globus authentication for Sophia inference API
+
+**Simulation (from frameworks module):**
+- `openmm` - Molecular dynamics simulation engine (provided by `module load frameworks`)
+
+**Development/Testing:**
+- `pytest>=7.0.0` - Unit testing framework
+- `pytest-mock>=3.10.0` - Mocking capabilities
+- `ruff>=0.1.0` - Code linting and formatting
+
+## 🚀 System Requirements
+
+- **Python**: 3.10+ (matching Aurora Framework module)
+- **Platforms**: Aurora (compute and orchestration), Sophia (inference)
+- **GPU**: Intel GPUs on Aurora (OpenCL support)
+
+---
+
+**Questions?** Contact the ALCF user support team or check the [ALCF documentation](https://docs.alcf.anl.gov/).
