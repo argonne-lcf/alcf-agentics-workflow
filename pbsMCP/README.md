@@ -139,6 +139,34 @@ The job completed successfully with no errors. Let me know if you need any addit
 09-04 20:41 | INFO     | ⏱️ Completed in 403.1s
 ```
 
+To run with a custom prompts and verbose logging, execute
+
+```bash
+python src/main.py --prompt "" --log-level DEBUG
+```
+
+The see the full set of options, run:
+```bash
+python src/main.py -h 
+
+# Ouptut
+#usage: pbs-mcp-agent [-h] [--prompt PROMPT] [--model MODEL] [--poll-interval POLL_INTERVAL] [--max-polls MAX_POLLS] [--log-level {DEBUG,INFO,WARNING,ERROR}]
+#
+#LLM-driven agent with PBS MCP tools on ALCF systems
+#
+#options:
+#  -h, --help            show this help message and exit
+#  --prompt PROMPT, -p PROMPT
+#                        Natural-language instruction for the agent
+#  --model MODEL, -m MODEL
+#                        LLM model on Sophia
+#  --poll-interval POLL_INTERVAL
+#                        Seconds between polls
+#  --max-polls MAX_POLLS
+#                        Max polling rounds
+#  --log-level {DEBUG,INFO,WARNING,ERROR}, -l {DEBUG,INFO,WARNING,ERROR}
+```
+
 > [!WARNING]
 > - If the example raises the error `No module named pbs_ifl`, please make sure the PBS MCP server environment variables are set correctly and run the `pbs-mcp-demo/external/pbs-python-api/setup_env.sh` script for the appropriate system.
 

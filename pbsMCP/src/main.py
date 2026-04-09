@@ -27,8 +27,8 @@ from mcp.client.session import ClientSession
 from mcp.client.stdio import StdioServerParameters, stdio_client
 
 from tools.globus_interface import get_access_token
-import tools.utils as utils
-from tools.utils import CUSTOM_TOOLS, CUSTOM_TOOL_SCHEMAS
+import utils
+from tools.custom_tools import CUSTOM_TOOLS, CUSTOM_TOOL_SCHEMAS
 
 # Sophia LLM API configuration
 SOPHIA_BASE_URL = os.getenv(
