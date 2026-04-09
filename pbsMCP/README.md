@@ -139,10 +139,10 @@ The job completed successfully with no errors. Let me know if you need any addit
 09-04 20:41 | INFO     | ⏱️ Completed in 403.1s
 ```
 
-To run with a custom prompts and verbose logging, execute
+To run with a custom prompts, execute
 
 ```bash
-python src/main.py --prompt "" --log-level DEBUG
+python src/main.py -p "Can you list and print the running jobs for user <user_name>?"
 ```
 
 The see the full set of options, run:
