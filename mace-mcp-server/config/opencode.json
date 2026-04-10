@@ -1,0 +1,34 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "alcf_sophia": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Sophia",
+      "options": {
+        "baseURL": "https://inference-api.alcf.anl.gov/resource_server/sophia/vllm/v1",
+        "apiKey": "{env:ALCF_INFERENCE_TOKEN}"
+      },
+      "models": {
+        "openai/gpt-oss-120b": {
+          "name": "gpt-oss-120b"
+        },
+        "openai/gpt-oss-20b": {
+          "name": "gpt-oss-20b"
+        }
+      }
+    },
+    "alcf_metis": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Metis",
+      "options": {
+        "baseURL": "https://inference-api.alcf.anl.gov/resource_server/metis/api/v1",
+        "apiKey": "{env:ALCF_INFERENCE_TOKEN}"
+      },
+      "models": {
+        "gpt-oss-120b": {
+          "name": "gpt-oss-120b"
+        }
+      }
+    }
+  }
+}
