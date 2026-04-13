@@ -39,16 +39,6 @@ Install via the install script:
 curl -fsSL https://opencode.ai/install | bash
 ```
 
-Or use one of the alternative methods:
-
-```bash
-# npm
-npm install -g opencode-ai
-
-# Homebrew (macOS / Linux)
-brew install anomalyco/tap/opencode
-```
-
 See the [OpenCode docs](https://opencode.ai/docs/) for the full list of installation options.
 
 ---
@@ -56,14 +46,18 @@ See the [OpenCode docs](https://opencode.ai/docs/) for the full list of installa
 ## 2. Set Up the MCP Server
 
 ```bash
-# 1. Navigate to the server directory
+# 1. Clone the repository
+git clone https://github.com/argonne-lcf/alcf-agentics-workflow.git
+cd alcf-agentics-workflow
+
+# 2. Navigate to the server directory
 cd mace-mcp-server
 
-# 2. Create and activate a virtual environment
+# 3. Create and activate a virtual environment
 python -m venv .venv
 source .venv/bin/activate            # On Windows: .venv\Scripts\activate
 
-# 3. Install dependencies
+# 4. Install dependencies
 pip install -r requirements.txt
 ```
 
@@ -71,20 +65,25 @@ On ALCF systems (Polaris, Sophia, etc.), load the frameworks module first:
 
 ```bash
 module load frameworks
+
+# Compute nodes require a proxy for internet access
+export http_proxy="http://proxy.alcf.anl.gov:3128"
+export https_proxy="http://proxy.alcf.anl.gov:3128"
+
 python3 -m venv .venv --system-site-packages
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+> **Note:** The proxy exports are also needed at runtime on compute nodes for PubChem lookups and the first-time MACE model download.
+
 ### Verify the installation
 
 ```bash
-python -c "from mcp.server.fastmcp import FastMCP; print('MCP SDK: OK')"
-python -c "import pubchempy; print('PubChemPy: OK')"
-python -c "from rdkit import Chem; print('RDKit: OK')"
-python -c "import ase; print('ASE: OK')"
-python -c "from mace.calculators import mace_mp; print('MACE: OK')"
+python tests/check_env.py
 ```
+
+This runs through all required imports (MCP SDK, PubChemPy, RDKit, ASE, MACE) and prints a pass/fail summary. If anything is missing, it shows the install command to fix it.
 
 ---
 
@@ -96,18 +95,36 @@ Full details: [ALCF Inference Endpoints documentation](https://docs.alcf.anl.gov
 
 ### 3a. Get an ALCF access token
 
+> **Note:** This step is the equivalent of `python src/tools/globus_interface.py authenticate` in the other examples (pbsMCP, remoteGlobusToAurora). The mace-mcp-server uses a different auth script because it only needs inference endpoint access, not Globus Compute or Transfer.
+
+A convenience script wraps the download, authentication, and token export. Use `--persist` to save the token to your shell profile (`~/.zshrc` or `~/.bashrc`, auto-detected) so it is available in future sessions:
+
+```bash
+source scripts/setup_auth.sh --persist
+```
+
+To re-authenticate (e.g. after the 30-day session expiry):
+
+```bash
+source scripts/setup_auth.sh --force --persist
+```
+
+Or run the steps manually:
+
 ```bash
 # Download the authentication helper script
-wget https://raw.githubusercontent.com/argonne-lcf/inference-endpoints/refs/heads/main/inference_auth_token.py
+curl -fsSL https://raw.githubusercontent.com/argonne-lcf/inference-endpoints/refs/heads/main/inference_auth_token.py -o inference_auth_token.py
 
 # Authenticate with your Globus/ALCF account (opens a browser)
 python inference_auth_token.py authenticate
 
-# Export the token as an environment variable
-export ALCF_INFERENCE_TOKEN=$(python inference_auth_token.py get_access_token)
+# Get the token value
+python inference_auth_token.py get_access_token
 ```
 
-> **Note:** Access tokens are valid for **48 hours**. The `get_access_token` command automatically refreshes expired tokens. Re-authentication is required every 30 days. If you encounter permission errors, log out at [app.globus.org/logout](https://app.globus.org/logout) and re-run `authenticate --force`.
+After obtaining your token (via the script or manually), **copy the token value into the `apiKey` fields** in `~/.config/opencode/opencode.json` (see step 3b below). Replace `YOUR_ALCF_TOKEN_HERE` with the actual token.
+
+> **Note:** Access tokens are valid for **48 hours**. Run `python inference_auth_token.py get_access_token` to refresh an expired token and update the `apiKey` value in your config. Re-authentication is required every 30 days. If you encounter permission errors, log out at [app.globus.org/logout](https://app.globus.org/logout) and re-run `source scripts/setup_auth.sh --force --persist`.
 
 ### 3b. Add ALCF providers to your global OpenCode config
 
@@ -128,7 +145,7 @@ Create or edit `~/.config/opencode/opencode.json`:
       "name": "Sophia",
       "options": {
         "baseURL": "https://inference-api.alcf.anl.gov/resource_server/sophia/vllm/v1",
-        "apiKey": "{env:ALCF_INFERENCE_TOKEN}"
+        "apiKey": "YOUR_ALCF_TOKEN_HERE"
       },
       "models": {
         "openai/gpt-oss-120b": {
@@ -144,7 +161,7 @@ Create or edit `~/.config/opencode/opencode.json`:
       "name": "Metis",
       "options": {
         "baseURL": "https://inference-api.alcf.anl.gov/resource_server/metis/api/v1",
-        "apiKey": "{env:ALCF_INFERENCE_TOKEN}"
+        "apiKey": "YOUR_ALCF_TOKEN_HERE"
       },
       "models": {
         "gpt-oss-120b": {
@@ -160,7 +177,7 @@ Create or edit `~/.config/opencode/opencode.json`:
 
 **Key points:**
 
-- **`{env:ALCF_INFERENCE_TOKEN}`** reads the token from your environment variable (set in step 3a).
+- **`apiKey`** must be set to your actual ALCF access token (obtained in step 3a). Replace `YOUR_ALCF_TOKEN_HERE` with the token value. When the token expires (every 48 hours), update this field with a fresh token.
 - **Two clusters are available:**
 
   | Cluster | Framework | Supported Endpoints | Notes |
@@ -269,17 +286,22 @@ Some complex SMILES strings may fail RDKit's distance-geometry embedding. Try:
 
 ### ALCF token expired
 
-Access tokens expire after 48 hours. Re-export:
+Access tokens expire after 48 hours. Get a fresh token and update your config:
 
 ```bash
-export ALCF_INFERENCE_TOKEN=$(python inference_auth_token.py get_access_token)
+# Get a new token
+python inference_auth_token.py get_access_token
 ```
+
+Copy the output and paste it into the `apiKey` fields in `~/.config/opencode/opencode.json`.
 
 If you get permission errors after 30 days, re-authenticate:
 
 ```bash
-python inference_auth_token.py authenticate --force
+source scripts/setup_auth.sh --force --persist
 ```
+
+Then update the `apiKey` in your OpenCode config with the new token.
 
 ---
 
