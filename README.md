@@ -66,6 +66,24 @@ Agentic workflows are intelligent computational pipelines that use AI agents to 
 - Natural-language driven PBS interaction
 - Natural-launguage driven job submission, monitoring and job output summary
 
+### 4. [MACE MCP Server for Molecular Simulations](./mace-mcp-server/)
+
+**Description**: An MCP server that exposes MACE machine-learning interatomic potential calculations as tools. Any MCP-compatible client (OpenCode, Claude Code, etc.) can connect and run molecular energy calculations -- molecule name lookup via PubChem, 3D coordinate generation via RDKit, and energy computation / geometry optimisation via the MACE-MP foundation model -- without writing chemistry code. By pairing an MCP server with OpenCode, the orchestration layer (LLM client, tool discovery, and tool calling) is provided out of the box, so development effort focuses entirely on the scientific tools themselves.
+
+**Technologies**:
+- **Model Context Protocol (MCP)** - FastMCP server exposing MACE tools via stdio
+- **MACE-MP** - Machine-learning interatomic potential (foundation model for molecules and materials)
+- **RDKit** - 3D molecular coordinate generation
+- **PubChemPy** - Molecule name to SMILES resolution via PubChem
+- **ASE** - Atomic Simulation Environment for structure I/O and optimisation
+- **OpenCode** - MCP-compatible AI coding agent with ALCF inference endpoint support
+
+**Use Cases**:
+- AI-assisted molecular energy calculations
+- LLM-driven molecular structure exploration
+- Rapid prototyping of computational chemistry workflows
+- Protocol-agnostic tool serving for scientific computing
+
 ---
 
 ## 🚀 Getting Started
