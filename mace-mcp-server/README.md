@@ -2,6 +2,8 @@
 
 A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server that exposes [MACE](https://github.com/ACEsuit/mace) machine-learning interatomic potential calculations as tools. Connect any MCP-compatible AI client to run molecular energy calculations without writing chemistry code.
 
+By pairing an MCP server with [OpenCode](https://opencode.ai/), the orchestration layer (LLM client, tool discovery, and tool calling) is provided out of the box. This means you can focus entirely on writing the scientific tools themselves, rather than building a custom agent loop or orchestration framework.
+
 ---
 
 ## Table of Contents
@@ -26,6 +28,14 @@ A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server that e
 - **Internet access** (for PubChem lookups and first-time MACE model download)
 
 No GPU is required -- the MACE-MP "small" model runs on CPU.
+
+### Where to run
+
+This example can be run on either a **local system** (laptop or workstation) or an **ALCF compute node** (Aurora, Polaris, etc.):
+
+- **Local system** -- The simplest option. MACE-MP "small" runs on CPU, so no special hardware is needed. Your machine has direct internet access for PubChem lookups and the first-time MACE model download (~100 MB). Install OpenCode and the Python dependencies as described below, then run `opencode` from the project directory.
+
+- **ALCF compute node** -- Also supported. Follow the ALCF-specific setup in [Step 2](#2-set-up-the-mcp-server) to load the `frameworks` module and set the HTTP proxy environment variables. The proxy is required at both install time and runtime so that PubChem lookups and the initial MACE model download can reach the internet.
 
 ---
 
@@ -103,12 +113,6 @@ A convenience script wraps the download, authentication, and token export. Use `
 source scripts/setup_auth.sh --persist
 ```
 
-To re-authenticate (e.g. after the 30-day session expiry):
-
-```bash
-source scripts/setup_auth.sh --force --persist
-```
-
 Or run the steps manually:
 
 ```bash
@@ -123,8 +127,6 @@ python inference_auth_token.py get_access_token
 ```
 
 After obtaining your token (via the script or manually), **copy the token value into the `apiKey` fields** in `~/.config/opencode/opencode.json` (see step 3b below). Replace `YOUR_ALCF_TOKEN_HERE` with the actual token.
-
-> **Note:** Access tokens are valid for **48 hours**. Run `python inference_auth_token.py get_access_token` to refresh an expired token and update the `apiKey` value in your config. Re-authentication is required every 30 days. If you encounter permission errors, log out at [app.globus.org/logout](https://app.globus.org/logout) and re-run `source scripts/setup_auth.sh --force --persist`.
 
 ### 3b. Add ALCF providers to your global OpenCode config
 
@@ -178,13 +180,6 @@ Create or edit `~/.config/opencode/opencode.json`:
 **Key points:**
 
 - **`apiKey`** must be set to your actual ALCF access token (obtained in step 3a). Replace `YOUR_ALCF_TOKEN_HERE` with the token value. When the token expires (every 48 hours), update this field with a fresh token.
-- **Two clusters are available:**
-
-  | Cluster | Framework | Supported Endpoints | Notes |
-  |---------|-----------|-------------------|-------|
-  | **Sophia** | vLLM | Chat, completions, embeddings, batch | Broader model selection, tool calling support |
-  | **Metis** | SambaNova | Chat completions only | Fewer models, no batch or tool calling |
-
 - See the [ALCF Inference Endpoints docs](https://docs.alcf.anl.gov/services/inference-endpoints/#available-models) for the full list of available models.
 
 ### 3c. Project `opencode.json` (MCP server config)
