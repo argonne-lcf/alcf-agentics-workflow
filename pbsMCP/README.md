@@ -172,6 +172,7 @@ python src/main.py -h
 
 ## 📁 Project Structure
 
+```
 pbsMCP
 ├── README.md
 ├── requirements.txt
@@ -187,6 +188,7 @@ pbsMCP
 │   └── utils.py
 ├── tests
 │   └── test_openmm_aurora.py
+```
 
 ## 🔧 Components
 
