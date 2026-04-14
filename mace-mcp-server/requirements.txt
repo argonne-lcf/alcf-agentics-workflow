@@ -1,0 +1,16 @@
+# MCP server framework
+mcp>=1.0.0
+
+# Chemistry / molecular tools
+pubchempy>=1.0.4
+rdkit
+ase>=3.22.0
+numpy>=1.20.0
+
+# MACE machine-learning interatomic potential
+mace-torch==0.3.15
+
+# Development / testing
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+ruff>=0.1.0
