@@ -25,7 +25,7 @@ Agentic workflows are intelligent computational pipelines that use AI agents to 
 **Technologies**: 
 - **LangGraph** - Agent orchestration framework
 - **Sophia LLM Service** - Protein analysis and simulation planning
-- **Aurora GPU** - High-performance molecular dynamics simulation
+- **Aurora** - High-performance molecular dynamics simulation
 - **Globus Compute** - Remote job execution
 
 **Use Cases**:
@@ -39,10 +39,9 @@ Agentic workflows are intelligent computational pipelines that use AI agents to 
 **Description**: An end-to-end workflow that demonstrates an agentic workflow run entirely within the same batch job. This means the LangGraph agent, the language model, then the simulations are all run on Aurora or Polaris compute nodes. 
 
 **Technologies**:
-- **PBS MCP Server** - Interaction with PBS on ALCF systems
 - **LangGraph** - Agent orchestration framework
-- **Sophia LLM Service** - 
-- **Aurora GPU** - High-performance molecular dynamics simulation
+- **vLLM** - Local LLM serving for protein analysis and simulation planning
+- **Aurora** - High-performance molecular dynamics simulation and LLM inference
 
 **Use Cases**:
 - Scientific workflow automation
@@ -58,9 +57,7 @@ Agentic workflows are intelligent computational pipelines that use AI agents to 
 - **Sophia LLM Service** - Tool-calling and natural-language orchestration (OpenAI-compatible API)
 - **Model Context Protocol (MCP)** - Structured access to PBS tools via stdio subprocess
 - **PBS MCP Server** - Scheduler integration (submit, status, queues, etc.)
-- **OpenMM** - GPU-accelerated molecular dynamics inside submitted PBS jobs
 - **Aurora** - Login-node orchestration and compute-node simulation
-- **Globus** - Authentication for the Sophia inference API
 
 **Use Cases**:
 - Natural-language driven PBS interaction
