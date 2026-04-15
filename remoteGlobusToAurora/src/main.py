@@ -136,6 +136,7 @@ Be sure to reply with only JSON, no formatting or extra text, no more than one s
 
       try:
          simulation_params = json.loads(response.content)
+         simulation_params["protein"] = state["protein"]
          state["simulation_params"] = simulation_params
          logger.debug(f"✅ LLM output parsed: {simulation_params}")
       except Exception as e:

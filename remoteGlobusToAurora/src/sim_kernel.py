@@ -108,7 +108,10 @@ def _run_openmm_simulation(protein: str, timestep: float, temperature: float, st
       initial_energy = initial_state.getPotentialEnergy()
       initial_positions = initial_state.getPositions()
       
-      logging.info(f"Initial energy: {initial_energy:.2f}")
+      logging.info(
+         "Initial energy: %.2f kJ/mol",
+         initial_energy.value_in_unit(unit.kilojoule_per_mole),
+      )
       
       # Run molecular dynamics
       logging.info(f"Running {steps} MD steps...")
@@ -145,7 +148,11 @@ def _run_openmm_simulation(protein: str, timestep: float, temperature: float, st
          "openmm_version": openmm.__version__
       }
       
-      logging.info(f"Simulation completed: RMSD={rmsd:.3f}Å, Energy={final_energy:.1f}")
+      logging.info(
+         "Simulation completed: RMSD=%.3f Å, Energy=%.1f kJ/mol",
+         rmsd,
+         final_energy.value_in_unit(unit.kilojoule_per_mole),
+      )
       logging.info(f"Performance: {steps_per_second:.0f} steps/second on {platform_name}")
       
       return results
