@@ -57,7 +57,7 @@ elif [ $SYSTEM == "aurora" ]; then
     export VLLM_LOGGING_LEVEL=DEBUG
 
     # Start vllm server
-    vllm serve $MODEL --port 8000 --dtype bfloat16 --tensor-parallel-size 1 --trust-remote-code > vllm_server.log 2>&1 &
+    vllm serve $MODEL --port 8000 --dtype bfloat16 --tensor-parallel-size 1 --trust-remote-code --enforce-eager > vllm_server.log 2>&1 &
 
     # Needed to connect to the vllm server
     unset http_proxy
