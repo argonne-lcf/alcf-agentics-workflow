@@ -99,6 +99,13 @@ export HF_HUB_OFFLINE=1
 export TRANSFORMERS_OFFLINE=1
 ```
 
+**On Aurora only**, run the following script to apply a workaround for a [known issue](https://docs.alcf.anl.gov/aurora/data-science/inference/vllm/#known-issue-on-aurora)
+
+```bash
+export VLLM_CACHE_ROOT=~/.cache/vllm
+python /flare/datasets/softwares/vllm/vllm_build_model_cache.py
+```
+
 With the correct environment, start the vLLM server on the node
 
 ```bash
