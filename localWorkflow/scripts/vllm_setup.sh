@@ -30,7 +30,7 @@ echo "HF_TOKEN: $HF_TOKEN"
 
 # Check that MODEL is set and that the model is available
 if [ -z "$MODEL" ]; then
-    echo "Env variable MODEL needs to be set. Example: export MODEL='meta-llama/Meta-Llama-3.1-8B-Instruct'"
+    echo "Env variable MODEL needs to be set. Example: export MODEL='meta-llama/Llama-3.1-8B-Instruct'"
     return 1 2>/dev/null || exit 1
 fi
 echo "Loading model: $MODEL"
