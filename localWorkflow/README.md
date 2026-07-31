@@ -36,7 +36,7 @@ ssh <user_name>@aurora.alcf.anl.gov                                 # login to A
 git clone https://github.com/argonne-lcf/alcf-agentics-workflow.git # clone repo
 cd alcf-agentics-workflow/localWorkflow                             # enter example dir
 module load frameworks                                              # access Python and AI frameworks on Aurora
-python -m venv venv                                                 # setup virtual environment
+python -m venv venv --system-site-packages                          # setup virtual environment
 source venv/bin/activate                                            # activate virtual environment
 pip install -r requirements.txt                                     # install dependencies for the demo
 ```
@@ -54,7 +54,7 @@ cd alcf-agentics-workflow/localWorkflow                             # enter exam
 module use /soft/modulefiles                                        # access modules on Polaris
 module load conda                                                   # load datascience module
 conda activate                                                      # activate default conda env (get Python)
-python -m venv venv                                                 # setup virtual environment
+python -m venv venv --system-site-packages                          # setup virtual environment
 source venv/bin/activate                                            # activate virtual environment
 pip install -r requirements.txt                                     # install dependencies for the demo
 pip install vllm                                                    # install vllm and its dependencies (needed to locally serve LLM)
