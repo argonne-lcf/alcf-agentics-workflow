@@ -11,10 +11,12 @@ Questions: rbalin@anl.gov, htummalapalli@anl.gov
 - Python 3.X with virtual environment
 - Access to ALCF systems: Aurora or Polaris
 - HuggingFace account and user access token
+- Access to `/flare/datasets/model-weights/hub/` on Aurora and `/eagle/datasets/model-weights/hub` on Polaris where model weights are located
 
-> [!WARNING]
-> - A personal HuggingFace account and user access token will be needed in order to serve the LLMs locally on the systems. Please [create an account](https://huggingface.co/join) on HuggingFace and follow [instructions](https://huggingface.co/docs/hub/en/security-tokens) to create a token. A read-only token is sufficient. Additionally, to access the Meta Llama 3.1 8B model being used for this example, please [request access to the model](https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct) (this should only take a few minutes and you can check the status of your request clicking on your profile settings and Gated Repositories). 
-> - To download the LLama 3.1 8B model, execute the following on Aurora or Polaris. 
+Alternatively, users can download the weights in their project space with the following instructions:
+
+1. Set up a personal HuggingFace account and user access token in order to serve the LLMs locally on the systems. Please [create an account](https://huggingface.co/join) on HuggingFace and follow [instructions](https://huggingface.co/docs/hub/en/security-tokens) to create a token. A read-only token is sufficient. Additionally, to access the Meta Llama 3.1 8B model being used for this example, please [request access to the model](https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct) (this should only take a few minutes and you can check the status of your request clicking on your profile settings and Gated Repositories). 
+2. Download the LLama 3.1 8B model executing the following on Aurora or Polaris. 
 ```bash
 # Load frameworks/conda module (e.g., module load frameworks)
 # Authenticate with HF (this will require your HuggingFace token)
@@ -82,18 +84,19 @@ Then source the environment created above and export key environment variables
 module load frameworks
 source venv/bin/activate
 
-# On Polaris
-cd alcf-agentics-workflow/localWorkflow 
+# On Polaris 
 module use /soft/modulefiles
 module load conda
 source venv/bin/activate
 
 # On either system
-export HF_HOME="/path/to/.cache"
-export HF_DATASETS_CACHE="/path/to/.cache"
+export HF_HOME="/flare/datasets/model-weights" # or "/path/to/.cache"
+export HF_DATASETS_CACHE="/flare/datasets/model-weights" # or "/path/to/.cache"
 export HF_TOKEN="your_HuggingFace_token"
-export MODEL="meta-llama/Meta-Llama-3.1-8B-Instruct"
+export MODEL="meta-llama/Llama-3.1-8B-Instruct"
 export TMPDIR="/tmp"
+export HF_HUB_OFFLINE=1
+export TRANSFORMERS_OFFLINE=1
 ```
 
 With the correct environment, start the vLLM server on the node
